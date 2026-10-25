@@ -4,7 +4,7 @@ import { EnhancedSimulation, type EnhancedSettings } from "./engine/enhanced";
 import { ENHANCED_PRESETS } from "./engine/presets";
 import { randomSeed } from "./engine/rng";
 import { ALGAE, FISH, SHARK, type Simulation } from "./engine/types";
-import { PopulationChart, type History } from "./ui/chart";
+import { LineChart, drawPhase, drawPyramid, emptyHistory, type History, type SeriesDef } from "./ui/chart";
 import { CLASSIC_FIELDS, ENHANCED_FIELDS, getPath, setPath, type Field, type FieldGroup } from "./ui/fields";
 
 type Mode = "classic" | "enhanced";
@@ -24,7 +24,50 @@ const state = {
 let sim: Simulation;
 let cells: Uint8Array;
 let history: History;
-const chart = new PopulationChart($("#chart"), $("#tooltip"));
+const chart = new LineChart($("#chart"), $("#tooltip"));
+
+type ChartTab = "population" | "births" | "eaten" | "deaths" | "ages" | "cycle";
+let chartTab: ChartTab = "population";
+
+const FISH_LINE = { color: "--fish" };
+const SHARK_LINE = { color: "--shark" };
+const LINE_CHARTS: Partial<Record<ChartTab, { title: string; note: string; series: SeriesDef[]; smoothable: boolean }>> = {
+  population: {
+    title: "Population over time",
+    note: "",
+    series: [
+      { key: "fish", label: "Fish", ...FISH_LINE },
+      { key: "sharks", label: "Sharks", ...SHARK_LINE },
+    ],
+    smoothable: false,
+  },
+  births: {
+    title: "Births per iteration",
+    note: "",
+    series: [
+      { key: "fishBorn", label: "Fish born", ...FISH_LINE },
+      { key: "sharksBorn", label: "Sharks born", ...SHARK_LINE },
+    ],
+    smoothable: true,
+  },
+  eaten: {
+    title: "Fish eaten per iteration",
+    note: "How many fish the sharks ate in each iteration.",
+    series: [{ key: "fishEaten", label: "Fish eaten", ...SHARK_LINE }],
+    smoothable: true,
+  },
+  deaths: {
+    title: "Deaths per iteration",
+    note: "All causes: eaten, old age and starvation. The totals table below splits them by cause.",
+    series: [
+      { key: "fishDied", label: "Fish died", ...FISH_LINE },
+      { key: "sharksDied", label: "Sharks died", ...SHARK_LINE },
+    ],
+    smoothable: true,
+  },
+};
+
+const totals = { fishBorn: 0, sharksBorn: 0, fishEaten: 0, fishOldAge: 0, fishStarved: 0, sharksOldAge: 0, sharksStarved: 0, fishPeak: 0, sharksPeak: 0 };
 const pond = $<HTMLCanvasElement>("#pond");
 const pondCtx = pond.getContext("2d")!;
 
@@ -114,7 +157,8 @@ function newPond(): void {
       ? new ClassicSimulation({ ...state.classic, seed: state.seed })
       : new EnhancedSimulation({ ...structuredClone(state.enhanced), seed: state.seed });
   cells = new Uint8Array(sim.width * sim.height);
-  history = { ticks: [], fish: [], sharks: [] };
+  history = emptyHistory();
+  for (const k of Object.keys(totals) as (keyof typeof totals)[]) totals[k] = 0;
   record();
   $("#apply-hint").hidden = true;
   setRunning(false);
@@ -123,9 +167,30 @@ function newPond(): void {
 
 function record(): void {
   const { fish, sharks } = sim.counts();
+  const e = sim.tick === 0 ? null : sim.lastEvents();
   history.ticks.push(sim.tick);
   history.fish.push(fish);
   history.sharks.push(sharks);
+  history.fishBorn.push(e?.fishBorn ?? 0);
+  history.sharksBorn.push(e?.sharksBorn ?? 0);
+  history.fishEaten.push(e?.fishEaten ?? 0);
+  history.fishOldAge.push(e?.fishOldAge ?? 0);
+  history.fishStarved.push(e?.fishStarved ?? 0);
+  history.sharksOldAge.push(e?.sharksOldAge ?? 0);
+  history.sharksStarved.push(e?.sharksStarved ?? 0);
+  history.fishDied.push(e ? e.fishEaten + e.fishOldAge + e.fishStarved : 0);
+  history.sharksDied.push(e ? e.sharksOldAge + e.sharksStarved : 0);
+  if (e) {
+    totals.fishBorn += e.fishBorn;
+    totals.sharksBorn += e.sharksBorn;
+    totals.fishEaten += e.fishEaten;
+    totals.fishOldAge += e.fishOldAge;
+    totals.fishStarved += e.fishStarved;
+    totals.sharksOldAge += e.sharksOldAge;
+    totals.sharksStarved += e.sharksStarved;
+  }
+  totals.fishPeak = Math.max(totals.fishPeak, fish);
+  totals.sharksPeak = Math.max(totals.sharksPeak, sharks);
 }
 
 function stepOnce(): boolean {
@@ -239,8 +304,63 @@ function drawStats(): void {
 function drawAll(): void {
   drawPond();
   drawStats();
-  chart.draw(history);
+  drawCharts();
+  drawTotals();
   if (!state.running) setRunButtonLabel();
+}
+
+function drawCharts(): void {
+  const line = LINE_CHARTS[chartTab];
+  $("#line-box").hidden = !line;
+  $("#ages-box").hidden = chartTab !== "ages";
+  $("#cycle-box").hidden = chartTab !== "cycle";
+  $("#smooth-wrap").hidden = !line?.smoothable;
+  let title = line?.title ?? "";
+  let note = line?.note ?? "";
+  let legend: SeriesDef[] = line?.series ?? [];
+  if (line) {
+    const window = line.smoothable && $<HTMLInputElement>("#smooth").checked ? 10 : 1;
+    chart.draw(history, line.series, window);
+  } else if (chartTab === "ages") {
+    const sexes = sim.hasSexes();
+    title = sexes ? "Age and sex right now" : "Ages right now";
+    note = sexes
+      ? "Each bar is an age band: males on the left, females on the right."
+      : sim instanceof ClassicSimulation
+        ? "The original model has no males and females, so this shows ages only."
+        : "Switch on \u201cSeparate males and females\u201d (Ocean settings) to split by sex.";
+    const individuals = sim.individuals();
+    const limits = sim.ageLimits();
+    drawPyramid($("#pyramid-fish"), individuals, FISH, limits.fish, sexes);
+    drawPyramid($("#pyramid-sharks"), individuals, SHARK, limits.sharks, sexes);
+    legend = [];
+  } else {
+    title = "Fish against sharks";
+    note = "Each point is one iteration. A loop means the two populations cycle; a line running into an axis means one died out. Older parts fade.";
+    drawPhase($("#phase"), history);
+    legend = [];
+  }
+  $("#chart-title").textContent = title;
+  $("#chart-note").textContent = note;
+  $("#legend-items").innerHTML = legend
+    .map((s) => `<span><i class="key ${s.color === "--fish" ? "key-fish" : "key-shark"}"></i>${s.label}</span>`)
+    .join("");
+}
+
+function drawTotals(): void {
+  const { fish, sharks } = sim.counts();
+  const set = (id: string, v: number) => ($(`#t-${id}`).textContent = v.toLocaleString());
+  set("fish-born", totals.fishBorn);
+  set("fish-eaten", totals.fishEaten);
+  set("fish-old", totals.fishOldAge);
+  set("fish-starved", totals.fishStarved);
+  set("fish-alive", fish);
+  set("fish-peak", totals.fishPeak);
+  set("sharks-born", totals.sharksBorn);
+  set("sharks-old", totals.sharksOldAge);
+  set("sharks-starved", totals.sharksStarved);
+  set("sharks-alive", sharks);
+  set("sharks-peak", totals.sharksPeak);
 }
 
 function setRunButtonLabel(): void {
@@ -250,8 +370,9 @@ function setRunButtonLabel(): void {
 }
 
 function downloadCsv(): void {
-  const rows = ["iteration,fish,sharks"];
-  for (let i = 0; i < history.ticks.length; i++) rows.push(`${history.ticks[i]},${history.fish[i]},${history.sharks[i]}`);
+  const cols = Object.keys(history) as (keyof History)[];
+  const rows = [cols.join(",")];
+  for (let i = 0; i < history.ticks.length; i++) rows.push(cols.map((c) => history[c][i]).join(","));
   const blob = new Blob([rows.join("\n")], { type: "text/csv" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -315,6 +436,16 @@ function init(): void {
     drawAll();
   });
   $("#csv").addEventListener("click", downloadCsv);
+  for (const tab of document.querySelectorAll<HTMLButtonElement>("[data-chart]")) {
+    tab.addEventListener("click", () => {
+      chartTab = tab.dataset.chart as ChartTab;
+      for (const t of document.querySelectorAll<HTMLButtonElement>("[data-chart]")) {
+        t.setAttribute("aria-selected", String(t === tab));
+      }
+      drawCharts();
+    });
+  }
+  $("#smooth").addEventListener("change", drawCharts);
 
   const speed = $<HTMLInputElement>("#speed");
   const speedOut = $("#speed-out");

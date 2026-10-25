@@ -3,7 +3,25 @@
  * ideas as the classic one, with many more knobs.
  */
 import { Rng } from "./rng";
-import { ALGAE, EMPTY, FISH, SHARK, type Counts, type Family, type Simulation } from "./types";
+import {
+  ALGAE,
+  EMPTY,
+  FEMALE,
+  FISH,
+  MALE,
+  NO_SEX,
+  SHARK,
+  emptyEvents,
+  recordBirth,
+  recordDeath,
+  type Counts,
+  type DeathCause,
+  type Family,
+  type Individual,
+  type Sex,
+  type Simulation,
+  type TickEvents,
+} from "./types";
 
 export interface SpeciesSettings {
   start: number;
@@ -65,6 +83,13 @@ export interface EnhancedSettings {
   shuffleOrder: boolean;
   /** Stop after this many iterations (0 = no limit). */
   maxTicks: number;
+  /**
+   * Creatures are male or female. Partners must be of the opposite sex, and when a
+   * species breeds alone only its females have young.
+   */
+  sexes: boolean;
+  /** Share of babies born female (0-1). */
+  femaleShare: number;
   fish: FishSettings;
   sharks: SharkSettings;
   algae: AlgaeSettings;
@@ -80,6 +105,8 @@ export const ENHANCED_DEFAULTS: Omit<EnhancedSettings, "seed"> = {
   offspring: "adjacent",
   shuffleOrder: true,
   maxTicks: 0,
+  sexes: false,
+  femaleShare: 0.5,
   fish: {
     start: 600,
     breedAge: 3,
@@ -121,6 +148,7 @@ interface Creature {
   family: Family;
   alive: boolean;
   age: number;
+  sex: Sex;
   energy: number;
   cooldown: number;
   cell: number;
@@ -149,6 +177,7 @@ export class EnhancedSimulation implements Simulation {
   private algae: Int16Array;
   private offsets: number[][];
   private ended = false;
+  private events: TickEvents = emptyEvents();
 
   constructor(settings: EnhancedSettings) {
     this.settings = structuredClone(settings);
@@ -184,6 +213,7 @@ export class EnhancedSimulation implements Simulation {
       alive: true,
       // Starting creatures get mixed ages so they don't all breed and die in lock-step.
       age: initial ? this.rng.int(Math.max(1, spec.maxAge)) : 0,
+      sex: s.sexes ? (this.rng.chance(s.femaleShare) ? FEMALE : MALE) : NO_SEX,
       energy: family === SHARK ? s.sharks.startEnergy : s.algae.fishStartEnergy,
       cooldown: initial ? this.rng.int(spec.breedCooldown + 1) : spec.breedCooldown,
       cell,
@@ -191,6 +221,7 @@ export class EnhancedSimulation implements Simulation {
     };
     this.creatures.push(c);
     this.grid[cell] = c;
+    if (!initial) recordBirth(this.events, family);
   }
 
   private wrapCoord(v: number, n: number): number | null {
@@ -263,7 +294,8 @@ export class EnhancedSimulation implements Simulation {
     this.grid[cell] = c;
   }
 
-  private die(c: Creature): void {
+  private die(c: Creature, cause: DeathCause): void {
+    if (c.alive) recordDeath(this.events, c.family, cause);
     c.alive = false;
     if (this.grid[c.cell] === c) this.grid[c.cell] = null;
   }
@@ -299,13 +331,23 @@ export class EnhancedSimulation implements Simulation {
   private tryBreed(c: Creature, fromCell: number): void {
     const spec = this.spec(c.family);
     if (c.age < spec.breedAge || c.cooldown > 0) return;
+    const sexes = this.settings.sexes;
+    if (sexes && !spec.needsMate && c.sex !== FEMALE) return;
     if (c.family === SHARK && c.energy < this.settings.sharks.breedEnergy * this.settings.sharks.maxEnergy) return;
     let mate: Creature | undefined;
     if (spec.needsMate) {
       mate = this.pick(
         this.neighbours(c.cell)
           .map((n) => this.grid[n])
-          .filter((o): o is Creature => !!o && o !== c && o.family === c.family && o.age >= spec.breedAge && o.cooldown <= 0),
+          .filter(
+            (o): o is Creature =>
+              !!o &&
+              o !== c &&
+              o.family === c.family &&
+              (!sexes || o.sex !== c.sex) &&
+              o.age >= spec.breedAge &&
+              o.cooldown <= 0,
+          ),
       );
       if (!mate) return;
     }
@@ -346,7 +388,7 @@ export class EnhancedSimulation implements Simulation {
       );
       if (prey) {
         const preyCell = prey.cell;
-        this.die(prey);
+        this.die(prey, "eaten");
         c.energy = Math.min(s.maxEnergy, c.energy + s.energyPerMeal);
         if (s.moveOnEat) this.moveTo(c, preyCell);
         moved = true;
@@ -383,6 +425,7 @@ export class EnhancedSimulation implements Simulation {
   step(): void {
     if (this.ended) return;
     this.tick++;
+    this.events = emptyEvents();
     const order = this.creatures.filter((c) => c.alive);
     if (this.settings.shuffleOrder) this.rng.shuffle(order);
 
@@ -392,13 +435,13 @@ export class EnhancedSimulation implements Simulation {
       c.age++;
       if (c.cooldown > 0) c.cooldown--;
       if (c.age > this.spec(c.family).maxAge) {
-        this.die(c);
+        this.die(c, "oldAge");
         continue;
       }
       if (c.family === SHARK || this.settings.algae.enabled) {
         c.energy--;
         if (c.energy <= 0) {
-          this.die(c);
+          this.die(c, "starved");
           continue;
         }
       }
@@ -443,5 +486,21 @@ export class EnhancedSimulation implements Simulation {
 
   atPausePoint(): boolean {
     return false;
+  }
+
+  lastEvents(): TickEvents {
+    return this.events;
+  }
+
+  individuals(): Individual[] {
+    return this.creatures.filter((c) => c.alive).map((c) => ({ family: c.family, age: c.age, sex: c.sex }));
+  }
+
+  hasSexes(): boolean {
+    return this.settings.sexes;
+  }
+
+  ageLimits(): { fish: number; sharks: number } {
+    return { fish: this.settings.fish.maxAge, sharks: this.settings.sharks.maxAge };
   }
 }

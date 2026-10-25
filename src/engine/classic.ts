@@ -9,7 +9,21 @@
  * (Flow, Direction, Breed, KillDead, SwapPL).
  */
 import { Rng } from "./rng";
-import { EMPTY, FISH, SHARK, type Counts, type Family, type Simulation } from "./types";
+import {
+  EMPTY,
+  FISH,
+  NO_SEX,
+  SHARK,
+  emptyEvents,
+  recordBirth,
+  recordDeath,
+  type Counts,
+  type DeathCause,
+  type Family,
+  type Individual,
+  type Simulation,
+  type TickEvents,
+} from "./types";
 
 export type ClassicRules = "exact" | "intended";
 
@@ -83,6 +97,7 @@ export class ClassicSimulation implements Simulation {
   /** Cell -> creature index (0 = empty). In "exact" rules this goes stale, as in the VBA. */
   private occ: Int32Array;
   private ended = false;
+  private events: TickEvents = emptyEvents();
 
   constructor(settings: ClassicSettings) {
     this.settings = { ...settings };
@@ -90,6 +105,7 @@ export class ClassicSimulation implements Simulation {
     this.rng = new Rng(settings.seed);
     this.occ = new Int32Array(settings.size * settings.size);
     this.populate();
+    this.events = emptyEvents();
   }
 
   private get exact(): boolean {
@@ -136,6 +152,7 @@ export class ClassicSimulation implements Simulation {
       cell,
     });
     this.occ[cell] = this.creatures.length - 1;
+    recordBirth(this.events, family);
   }
 
   /**
@@ -155,6 +172,7 @@ export class ClassicSimulation implements Simulation {
   step(): void {
     if (this.ended) return;
     if (this.tick > 0 && this.tick % this.settings.iterationsPerRun === 0) this.readIn();
+    this.events = emptyEvents();
     // "For Pi = 1 To Pi_Max": the bound is fixed at the start, so babies act next iteration.
     const end = this.creatures.length;
     for (let i = 1; i < end; i++) {
@@ -202,6 +220,8 @@ export class ClassicSimulation implements Simulation {
     } else {
       // Sharks eat (the shark stays where it is).
       if (cr[o].family !== c.family && c.family === SHARK) {
+        // In "exact" rules the fish may be a ghost that already died; that's a meal but not a death.
+        if (cr[o].alive) recordDeath(this.events, FISH, "eaten");
         cr[o].alive = false;
         this.occ[target] = 0;
         c.energy = c.energyRefresh;
@@ -223,12 +243,12 @@ export class ClassicSimulation implements Simulation {
     }
 
     // Ageing
-    if (c.age > c.maxAge) this.killDead(i);
+    if (c.age > c.maxAge) this.killDead(i, "oldAge");
     else c.age++;
 
     // Shark energy
     if (c.family === SHARK) {
-      if (c.energy <= 1) this.killDead(i);
+      if (c.energy <= 1) this.killDead(i, "starved");
       else c.energy--;
     }
   }
@@ -249,8 +269,10 @@ export class ClassicSimulation implements Simulation {
     c.cell = target;
   }
 
-  private killDead(i: number): void {
+  private killDead(i: number, cause: DeathCause): void {
     const c = this.creatures[i];
+    // A shark that dies of old age also fails the energy check straight after; count it once.
+    if (c.alive) recordDeath(this.events, c.family as Family, cause);
     c.alive = false;
     if (this.exact || this.occ[c.cell] === i) this.occ[c.cell] = 0;
   }
@@ -320,6 +342,27 @@ export class ClassicSimulation implements Simulation {
 
   atPausePoint(): boolean {
     return this.tick > 0 && this.tick % this.settings.iterationsPerRun === 0;
+  }
+
+  lastEvents(): TickEvents {
+    return this.events;
+  }
+
+  individuals(): Individual[] {
+    const out: Individual[] = [];
+    for (let i = 1; i < this.creatures.length; i++) {
+      const c = this.creatures[i];
+      if (c.alive) out.push({ family: c.family as Family, age: c.age, sex: NO_SEX });
+    }
+    return out;
+  }
+
+  hasSexes(): boolean {
+    return false;
+  }
+
+  ageLimits(): { fish: number; sharks: number } {
+    return { fish: this.settings.fishAgeLimit + 1, sharks: this.settings.sharkAgeLimit + 1 };
   }
 
   /** For tests: live creatures the location map doesn't point to (0 = map is accurate). */
