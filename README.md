@@ -6,6 +6,8 @@ It started life as an Excel/VBA workbook (`SnF - v4.xls`). This is a rebuild tha
 
 **Play it:** https://nichevo.github.io/SharksvsFish/ (once GitHub Pages is switched on, see below)
 
+![Classic mode: the original 21×21 pond with the population chart](docs/screenshots/classic.png)
+
 ## Modes
 
 ### Classic
@@ -32,6 +34,10 @@ A cleaner model with many more settings, and some presets to start from:
 - **Algae:** an optional food chain where fish must graze algae, which grows back over time.
 
 Presets: *Balanced ocean*, *Wa-Tor* (Dewdney's 1984 rules), *Pairs only* and *Algae food chain*.
+
+![Enhanced mode: a 60×40 wrap-around ocean with the full set of options](docs/screenshots/enhanced.png)
+
+<img src="docs/screenshots/mobile-dark.png" alt="The Algae food chain preset on a phone in dark mode" width="300">
 
 Every run uses a **seed**, so the same seed and settings always give the same run. **Download CSV** saves the population history.
 
