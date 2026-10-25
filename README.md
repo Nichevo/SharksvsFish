@@ -62,13 +62,30 @@ A **Totals so far** table shows births, deaths by cause (eaten, old age, starved
 
 Every run uses a **seed**, so the same seed and settings always give the same run.
 
+## Running it on your own computer
+
+There are three ways, from easiest to most flexible.
+
+1. **Download one file (no install).** On the [live site](https://nichevo.github.io/SharksvsFish/), click **Download to run offline**, or go straight to https://nichevo.github.io/SharksvsFish/sharks-vs-fish.html and save the page. You get a single `sharks-vs-fish.html` file with everything inside it. Double-click it to open it in any modern browser, with no internet or server needed.
+2. **Build the file yourself.** Install [Node.js](https://nodejs.org/) (version 20 or newer), then in this folder run `npm install` and `npm run build`. The same single file appears at `dist/sharks-vs-fish.html`, and the normal multi-file site is in `dist/`.
+3. **Run the development server** to change the code and see it update live:
+
+   ```sh
+   git clone https://github.com/Nichevo/SharksvsFish.git
+   cd SharksvsFish
+   npm install
+   npm run dev
+   ```
+
+   Then open the address it prints (usually http://localhost:5173). Use `npm run preview` to serve the production build locally instead.
+
 ## Development
 
 ```sh
 npm install
 npm run dev      # local server with hot reload
 npm test         # engine tests (vitest)
-npm run build    # type-check and build to dist/
+npm run build    # type-check and build to dist/, plus the offline dist/sharks-vs-fish.html
 ```
 
 The code layout:

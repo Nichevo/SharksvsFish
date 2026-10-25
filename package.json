@@ -6,7 +6,7 @@
   "description": "Predator-prey simulation of sharks and fish, rebuilt from an old Excel/VBA model.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/single-file.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

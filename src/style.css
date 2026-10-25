@@ -553,3 +553,14 @@ legend {
 .key-shark-female {
   background: var(--shark-female);
 }
+
+.offline-link {
+  margin-left: auto;
+  align-self: center;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 13px;
+}
+.offline-link:hover {
+  text-decoration: underline;
+}
