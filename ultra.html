@@ -74,6 +74,7 @@
             <button role="tab" data-chart="traits" aria-selected="false">Evolution</button>
             <button role="tab" data-chart="deaths" aria-selected="false">Deaths</button>
             <button role="tab" data-chart="algae" aria-selected="false">Algae &amp; seasons</button>
+            <button role="tab" data-chart="maths" aria-selected="false">Compare with the maths</button>
           </div>
           <div class="chart-head">
             <h2 id="chart-title">Population over time</h2>
@@ -83,6 +84,7 @@
                 <button data-trait="sight" aria-pressed="false">Sight</button>
                 <button data-trait="lifespan" aria-pressed="false">Lifespan</button>
               </span>
+              <select id="lv-pair" aria-label="Prey and predator to compare" hidden></select>
               <span id="legend-items"></span>
               <button id="csv" class="link">Download CSV</button>
             </div>
@@ -93,6 +95,17 @@
             <div id="tooltip" class="tooltip" hidden></div>
           </div>
           <div id="hist-box" class="hists" hidden></div>
+          <div id="lv-box" class="lv" hidden>
+            <figure>
+              <figcaption>Prey against predators</figcaption>
+              <canvas id="lv-phase" aria-label="Prey numbers against predator numbers, with the fitted Lotka-Volterra orbit"></canvas>
+            </figure>
+            <div class="lv-text">
+              <p class="lv-eq">dx/dt = αx − βxy<br />dy/dt = δxy − γy</p>
+              <dl id="lv-params"></dl>
+              <p class="chart-note">x is prey and y is predators. The numbers are fitted to this run (skipping the first 50 iterations) by straight-line fits of each species' growth rate.</p>
+            </div>
+          </div>
         </div>
 
         <div class="chart-card">

@@ -15,7 +15,8 @@ import {
   type Trait,
 } from "../engine/ultra";
 import { getPath, setPath, type Field, type FieldGroup } from "../ui/fields";
-import { TimeChart, drawHistogram, type Line } from "./chart";
+import { TimeChart, drawHistogram, drawPhase, formatNum, type Line } from "./chart";
+import { equilibrium, fitLotkaVolterra, solveLotkaVolterra } from "./lv";
 import { ULTRA_FIELDS, ULTRA_PRESETS, type UltraPreset } from "./fields";
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -47,7 +48,7 @@ const state = {
   speed: 15,
 };
 
-type ChartTab = "population" | "traits" | "deaths" | "algae";
+type ChartTab = "population" | "traits" | "deaths" | "algae" | "maths";
 let chartTab: ChartTab = "population";
 let trait: Trait = "speed";
 let view: "species" | Trait = "species";
@@ -139,6 +140,15 @@ function newPond(): void {
   const picked = target.value;
   target.replaceChildren(...live.map((k) => new Option(SPECIES_LABEL[k], k, false, k === picked)));
   $("#hist-box").replaceChildren();
+  // Prey and predator pairs for the Lotka-Volterra comparison.
+  const pairs: [SpeciesKey, SpeciesKey][] = [["fish", "sharks"], ["fish", "barracuda"], ["sharks", "orcas"]];
+  const pairSelect = $<HTMLSelectElement>("#lv-pair");
+  const pickedPair = pairSelect.value;
+  pairSelect.replaceChildren(
+    ...pairs
+      .filter(([a, b]) => live.includes(a) && live.includes(b))
+      .map(([a, b]) => new Option(`${SPECIES_LABEL[a]} and ${SPECIES_LABEL[b].toLowerCase()}`, `${a},${b}`, false, `${a},${b}` === pickedPair)),
+  );
   cells = new Uint8Array(sim.width * sim.height);
   traitCells = new Float32Array(sim.width * sim.height);
   history = { ticks: [], algae: [], growth: [] };
@@ -377,6 +387,8 @@ function drawCharts(): void {
   const t = history.ticks;
   $("#trait-pick").hidden = chartTab !== "traits";
   $("#hist-box").hidden = chartTab !== "traits";
+  $("#lv-box").hidden = chartTab !== "maths";
+  $("#lv-pair").hidden = chartTab !== "maths";
   const winters = sim.settings.seasons.enabled ? " Shaded bands are winters." : "";
   if (chartTab === "population") {
     title = "Population over time";
@@ -392,6 +404,8 @@ function drawCharts(): void {
     title = "Deaths per iteration";
     note = "All causes, as a 10-iteration average. The totals table below splits them by cause.";
     lines = live.map((k) => ({ label: SPECIES_LABEL[k], color: COLOR[k], values: smooth(history[k + "Died"], 10) }));
+  } else if (chartTab === "maths") {
+    ({ title, note, lines } = drawMaths());
   } else {
     title = "Algae and fish";
     note = sim.settings.algae.enabled
@@ -406,12 +420,55 @@ function drawCharts(): void {
       lines.push({ label: "Growth", color: "--text-muted", values: history.growth.map((g) => (g / 2) * top), dashed: true });
     }
   }
-  chart.draw(t, lines, chartTab === "deaths" || chartTab === "traits" ? [] : winterBands());
+  chart.draw(t, lines, chartTab === "population" || chartTab === "algae" ? winterBands() : []);
   $("#chart-title").textContent = title;
   $("#chart-note").textContent = note;
   $("#legend-items").innerHTML = lines
-    .map((l) => `<span><i class="key ${l.dashed ? "key-dashed" : ""}" style="background:var(${l.color})"></i>${l.label}</span>`)
+    .map((l) => `<span><i class="key ${l.dashed ? "key-dashed" : ""}" style="${l.dashed ? "border-color" : "background"}:var(${l.color})"></i>${l.label}</span>`)
     .join("");
+}
+
+/** The run against the Lotka-Volterra equations fitted to it. */
+function drawMaths(): { title: string; note: string; lines: Line[] } {
+  const [prey, pred] = $<HTMLSelectElement>("#lv-pair").value.split(",") as SpeciesKey[];
+  const label = { prey: SPECIES_LABEL[prey], pred: SPECIES_LABEL[pred] };
+  const lines: Line[] = [
+    { label: label.prey, color: COLOR[prey], values: history[prey] },
+    { label: label.pred, color: COLOR[pred], values: history[pred] },
+  ];
+  const fit = fitLotkaVolterra(history[prey], history[pred]);
+  const params = $("#lv-params");
+  let model: { prey: number[]; pred: number[] } | null = null;
+  let note: string;
+  if (fit) {
+    const n = history.ticks.length;
+    model = solveLotkaVolterra(fit, history[prey][fit.from], history[pred][fit.from], n - fit.from);
+    const pad = new Array<number>(fit.from).fill(NaN);
+    lines.push(
+      { label: `${label.prey} (maths)`, color: COLOR[prey], values: pad.concat(model.prey), dashed: true },
+      { label: `${label.pred} (maths)`, color: COLOR[pred], values: pad.concat(model.pred), dashed: true },
+    );
+    const eq = equilibrium(fit);
+    const num = (v: number) => (v < 0.01 ? v.toExponential(2) : formatNum(v));
+    params.innerHTML = [
+      ["α prey growth", num(fit.alpha)],
+      ["β eaten per meeting", num(fit.beta)],
+      ["δ predator gain per meeting", num(fit.delta)],
+      ["γ predator death rate", num(fit.gamma)],
+      [`Balance point`, `${Math.round(eq.prey)} ${label.prey.toLowerCase()}, ${Math.round(eq.pred)} ${label.pred.toLowerCase()}`],
+      ["One cycle", `about ${Math.round(eq.period)} iterations`],
+      ["Fit (R²)", `${fit.r2Prey.toFixed(2)} prey, ${fit.r2Pred.toFixed(2)} predators`],
+    ]
+      .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`)
+      .join("");
+    note = `Solid lines are your run; dashed lines are the equations, started from the run's numbers at iteration ${history.ticks[fit.from]}. The maths assumes everyone meets everyone, so the real ocean drifts out of step: space, ages, seasons and chance all push it around.`;
+  } else {
+    params.innerHTML = "";
+    note = `Nothing to fit yet. Let both ${label.prey.toLowerCase()} and ${label.pred.toLowerCase()} run for at least 100 iterations through a rise and fall.`;
+  }
+  const centre = fit ? equilibrium(fit) : null;
+  drawPhase($("#lv-phase"), { prey: history[prey], pred: history[pred] }, model, label, centre);
+  return { title: "Your run against the Lotka-Volterra equations", note, lines };
 }
 
 function drawHists(): void {
@@ -539,6 +596,7 @@ function init(): void {
       drawCharts();
     });
   }
+  $("#lv-pair").addEventListener("change", drawCharts);
   $<HTMLSelectElement>("#view").addEventListener("change", (e) => {
     view = (e.target as HTMLSelectElement).value as typeof view;
     drawPond();

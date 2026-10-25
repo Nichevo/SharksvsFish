@@ -266,3 +266,112 @@ export function drawHistogram(canvas: HTMLCanvasElement, values: number[], color
   ctx.fillText(String(maxC), pad.left - 6, pad.top);
   ctx.fillText("0", pad.left - 6, pad.top + plotH);
 }
+
+/** Prey against predators: the run's path (older parts fade) with the fitted orbit dashed over it. */
+export function drawPhase(
+  canvas: HTMLCanvasElement,
+  run: { prey: number[]; pred: number[] },
+  model: { prey: number[]; pred: number[] } | null,
+  labels: { prey: string; pred: string },
+  centre: { prey: number; pred: number } | null,
+): void {
+  const { ctx, w, h } = fitCanvas(canvas);
+  const pad = { left: 48, right: 16, top: 12, bottom: 34 };
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+  const n = run.prey.length;
+  let maxX = Math.max(4, ...run.prey);
+  let maxY = Math.max(4, ...run.pred);
+  if (model) {
+    // Keep a runaway model from squashing the real run into a corner.
+    maxX = Math.max(maxX, Math.min(maxX * 1.5, Math.max(...model.prey)));
+    maxY = Math.max(maxY, Math.min(maxY * 1.5, Math.max(...model.pred)));
+  }
+  maxX = niceTop(maxX);
+  maxY = niceTop(maxY);
+  const xOf = (v: number) => pad.left + (Math.min(v, maxX) / maxX) * plotW;
+  const yOf = (v: number) => pad.top + plotH - (Math.min(v, maxY) / maxY) * plotH;
+
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.strokeStyle = css(canvas, "--grid");
+  ctx.fillStyle = css(canvas, "--text-muted");
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = Math.round(yOf((maxY / 4) * i)) + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(pad.left + plotW, y);
+    ctx.stroke();
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(formatNum((maxY / 4) * i), pad.left - 6, y);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText(formatNum((maxX / 4) * i), xOf((maxX / 4) * i), pad.top + plotH + 6);
+  }
+  ctx.fillStyle = css(canvas, "--text-secondary");
+  ctx.textAlign = "center";
+  ctx.fillText(labels.prey, pad.left + plotW / 2, h - 14);
+  ctx.save();
+  ctx.translate(12, pad.top + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textBaseline = "middle";
+  ctx.fillText(labels.pred, 0, 0);
+  ctx.restore();
+  if (!n) return;
+
+  const stride = Math.max(1, Math.floor(n / 1500));
+  ctx.strokeStyle = css(canvas, "--text-secondary");
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = "round";
+  const segments = 20;
+  const per = Math.ceil(n / segments);
+  for (let s = 0; s < segments; s++) {
+    const from = s * per;
+    const to = Math.min(n - 1, (s + 1) * per);
+    if (from >= to) break;
+    ctx.globalAlpha = 0.15 + 0.85 * ((s + 1) / segments);
+    ctx.beginPath();
+    for (let i = from; i <= to; i += stride) {
+      if (i === from) ctx.moveTo(xOf(run.prey[i]), yOf(run.pred[i]));
+      else ctx.lineTo(xOf(run.prey[i]), yOf(run.pred[i]));
+    }
+    ctx.lineTo(xOf(run.prey[to]), yOf(run.pred[to]));
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  if (model) {
+    ctx.strokeStyle = css(canvas, "--accent");
+    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    const m = model.prey.length;
+    const ms = Math.max(1, Math.floor(m / 1500));
+    for (let i = 0; i < m; i += ms) {
+      if (i === 0) ctx.moveTo(xOf(model.prey[i]), yOf(model.pred[i]));
+      else ctx.lineTo(xOf(model.prey[i]), yOf(model.pred[i]));
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  if (centre) {
+    const cx = xOf(centre.prey);
+    const cy = yOf(centre.pred);
+    ctx.strokeStyle = css(canvas, "--accent");
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, cy - 5);
+    ctx.lineTo(cx + 5, cy + 5);
+    ctx.moveTo(cx + 5, cy - 5);
+    ctx.lineTo(cx - 5, cy + 5);
+    ctx.stroke();
+  }
+  ctx.fillStyle = css(canvas, "--text-primary");
+  ctx.strokeStyle = css(canvas, "--surface");
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(xOf(run.prey[n - 1]), yOf(run.pred[n - 1]), 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+}

@@ -149,8 +149,10 @@
   color: var(--accent-ink);
 }
 .key-dashed {
-  height: 2px;
-  width: 14px;
+  height: 0;
+  width: 16px;
+  border-top: 2px dashed;
+  border-radius: 0;
 }
 
 .hists {
@@ -212,4 +214,63 @@
 }
 .key-circle {
   border-radius: 50%;
+}
+
+#lv-pair {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+#lv-pair[hidden] {
+  display: none;
+}
+.lv {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(200px, 2fr);
+  gap: 16px;
+  padding: 8px 0;
+}
+.lv[hidden] {
+  display: none;
+}
+@media (max-width: 640px) {
+  .lv {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.lv figure {
+  margin: 0;
+}
+.lv figcaption {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+#lv-phase {
+  display: block;
+  width: 100%;
+  height: 260px;
+}
+.lv-eq {
+  margin: 0 0 8px;
+  font-family: ui-serif, Georgia, serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.lv dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.lv dt {
+  color: var(--text-secondary);
+}
+.lv dd {
+  margin: 0;
+  text-align: right;
 }
