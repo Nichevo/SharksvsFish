@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PAINT_SICK, PAINT_SPECIES, SPECIES, ULTRA_DEFAULTS, UltraSimulation, type UltraSettings } from "../src/engine/ultra";
+import { PAINT_FEMALE, PAINT_SICK, PAINT_SPECIES, SPECIES, ULTRA_DEFAULTS, UltraSimulation, type UltraSettings } from "../src/engine/ultra";
 import { ULTRA_PRESETS } from "../src/ultra/fields";
 
 function make(change: (s: UltraSettings) => void = () => {}, seed = 1): UltraSimulation {
@@ -28,7 +28,7 @@ describe("ultra", () => {
         sim.paint(cells);
         SPECIES.forEach((k, idx) => {
           expect(now[k] - prev[k]).toBe(sim.lastEvents()[k].born - deaths(sim, k));
-          expect(cells.filter((v) => (v & ~PAINT_SICK) === PAINT_SPECIES + idx).length).toBe(now[k]);
+          expect(cells.filter((v) => (v & ~(PAINT_SICK | PAINT_FEMALE)) === PAINT_SPECIES + idx).length).toBe(now[k]);
         });
         prev = now;
       }
@@ -165,5 +165,44 @@ describe("ultra", () => {
     });
     for (let i = 0; i < 200 && sim.counts().barracuda > 0; i++) sim.step();
     expect(sim.eventLog().some((e) => e.kind === "extinct" && e.detail.includes("barracuda"))).toBe(true);
+  });
+
+  it("with sexes on, only females have young and both sexes are born", () => {
+    const sim = make((s) => (s.sexes = true), 6);
+    let born = 0;
+    for (let i = 0; i < 100 && !sim.finished(); i++) {
+      sim.step();
+      born += sim.lastEvents().fish.born;
+    }
+    expect(born).toBeGreaterThan(100);
+    const share = sim.femaleCounts().fish / sim.counts().fish;
+    expect(share).toBeGreaterThan(0.35);
+    expect(share).toBeLessThan(0.65);
+    expect(make().femaleCounts().fish).toBe(0);
+  });
+
+  it("each trait comes from the mother or the father", () => {
+    const sim = make((s) => {
+      s.sexes = true;
+      s.evolution.mutation = 0;
+    });
+    // Reach inside to breed two hand-made parents.
+    const engine = sim as unknown as {
+      spawn(sp: number, cell: number, mother: unknown, father: unknown): void;
+      creatures: { genes: Record<string, number> }[];
+    };
+    const mother = { genes: { speed: 1, sight: 1, lifespan: 10 }, generation: 3 };
+    const father = { genes: { speed: 2, sight: 3, lifespan: 50 }, generation: 5 };
+    const seen = { speed: new Set<number>(), sight: new Set<number>(), lifespan: new Set<number>() };
+    for (let i = 0; i < 40; i++) {
+      engine.spawn(0, i, mother, father);
+      const g = engine.creatures[engine.creatures.length - 1].genes;
+      for (const t of ["speed", "sight", "lifespan"] as const) {
+        expect([mother.genes[t], father.genes[t]]).toContain(g[t]);
+        seen[t].add(g[t]);
+      }
+    }
+    for (const t of ["speed", "sight", "lifespan"] as const) expect(seen[t].size).toBe(2);
+    expect((engine.creatures[engine.creatures.length - 1] as unknown as { generation: number }).generation).toBe(6);
   });
 });

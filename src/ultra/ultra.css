@@ -1,5 +1,9 @@
 /* Extra styles for the Ultra Enhanced page. Shared styles come from ../style.css. */
 :root {
+  --barracuda-male: #9a6200;
+  --barracuda-female: #e3ad4c;
+  --orca-male: #2a2926;
+  --orca-female: #858279;
   --heat-lo: #eef1f5;
   --heat-hi: #1c5aa6;
   --heat-ink-dark: #ffffff;
@@ -16,6 +20,10 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    --barracuda-male: #c48a22;
+    --barracuda-female: #f2c97c;
+    --orca-male: #bdbbb3;
+    --orca-female: #f7f6f2;
     --heat-lo: #22262c;
     --heat-hi: #6aa8f0;
     --heat-ink-dark: #0b0b0b;
@@ -32,6 +40,10 @@
   }
 }
 :root[data-theme="dark"] {
+  --barracuda-male: #c48a22;
+  --barracuda-female: #f2c97c;
+  --orca-male: #bdbbb3;
+  --orca-female: #f7f6f2;
   --heat-lo: #22262c;
   --heat-hi: #6aa8f0;
   --heat-ink-dark: #0b0b0b;
@@ -344,4 +356,16 @@
   width: 100%;
   height: 320px;
   cursor: pointer;
+}
+
+.stat-sexes {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.pond-key .muted {
+  color: var(--text-muted);
+}
+.pond-key .key + .key {
+  margin-left: -2px;
 }

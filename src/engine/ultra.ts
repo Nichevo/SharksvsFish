@@ -62,6 +62,13 @@ export interface UltraSettings {
   wrap: boolean;
   /** Stop after this many iterations (0 = no limit). */
   maxTicks: number;
+  /**
+   * Creatures are male or female. A female breeds with an adult male next to her, and
+   * each baby takes each trait from its mother or its father at random.
+   */
+  sexes: boolean;
+  /** Share of creatures born female (0-1). */
+  femaleShare: number;
   species: Record<SpeciesKey, UltraSpecies>;
   algae: {
     /** Fish must graze algae to survive. */
@@ -122,6 +129,8 @@ export const ULTRA_DEFAULTS: Omit<UltraSettings, "seed"> = {
   height: 40,
   wrap: true,
   maxTicks: 0,
+  sexes: false,
+  femaleShare: 0.5,
   species: {
     fish: species({ start: 600, breedAge: 3, maxAge: 40, breedChance: 0.6, breedCooldown: 2, sight: 2, fleeChance: 0.5, breedEnergy: 0.3 }),
     sharks: species({
@@ -227,6 +236,7 @@ interface Creature {
   generation: number;
   /** 0 healthy, >0 iterations since infection, -1 recovered and immune. */
   sick: number;
+  female: boolean;
 }
 
 /** Averages over the living members of one species. */
@@ -243,6 +253,8 @@ export const PAINT_WATER = 0;
 export const PAINT_ALGAE = 1;
 export const PAINT_SPECIES = 2;
 export const PAINT_SICK = 0x40;
+/** Or-ed on for females when sexes are on. */
+export const PAINT_FEMALE = 0x20;
 
 const MOORE = [
   [-1, -1], [-1, 0], [-1, 1],
@@ -318,14 +330,20 @@ export class UltraSimulation {
     return { speed: s.speed, sight: s.sight, lifespan: s.maxAge };
   }
 
-  /** `parents` null means a starting creature: mixed ages and, with evolution, a little variety. */
-  private spawn(sp: number, cell: number, parent: Creature | null): void {
+  /**
+   * `parent` null means a starting creature: mixed ages and, with evolution, a little
+   * variety. With a `father` too, each trait comes from one parent at random.
+   */
+  private spawn(sp: number, cell: number, parent: Creature | null, father: Creature | null = null): void {
     const s = this.specs[sp];
-    const from = parent ? parent.genes : this.baseGenes(sp);
+    const from = (t: Trait) => {
+      if (!parent) return this.baseGenes(sp)[t];
+      return father && this.rng.chance(0.5) ? father.genes[t] : parent.genes[t];
+    };
     const genes: Genes = {
-      speed: this.mutate("speed", from.speed),
-      sight: this.mutate("sight", from.sight),
-      lifespan: this.mutate("lifespan", from.lifespan),
+      speed: this.mutate("speed", from("speed")),
+      sight: this.mutate("sight", from("sight")),
+      lifespan: this.mutate("lifespan", from("lifespan")),
     };
     const c: Creature = {
       sp,
@@ -336,8 +354,9 @@ export class UltraSimulation {
       cell,
       actedAt: this.tick,
       genes,
-      generation: parent ? parent.generation + 1 : 0,
+      generation: parent ? Math.max(parent.generation, father?.generation ?? 0) + 1 : 0,
       sick: 0,
+      female: this.settings.sexes && this.rng.chance(this.settings.femaleShare),
     };
     this.creatures.push(c);
     this.grid[cell] = c;
@@ -372,8 +391,8 @@ export class UltraSimulation {
     return Math.max(dy, dx);
   }
 
-  /** Nearest creature of one of `kinds` within `range` cells, or null. */
-  private nearest(cell: number, kinds: number[], range: number): number | null {
+  /** Nearest creature of one of `kinds` (and passing `ok`) within `range` cells, or null. */
+  private nearest(cell: number, kinds: number[], range: number, ok: (c: Creature) => boolean = () => true): number | null {
     if (range <= 0 || !kinds.length) return null;
     const y = Math.floor(cell / this.width);
     const x = cell % this.width;
@@ -387,7 +406,7 @@ export class UltraSimulation {
         const nx = this.wrapCoord(x + dx, this.width);
         if (nx === null) continue;
         const other = this.grid[ny * this.width + nx];
-        if (other && kinds.includes(other.sp)) {
+        if (other && kinds.includes(other.sp) && ok(other)) {
           const d = Math.max(Math.abs(dy), Math.abs(dx));
           if (d < bestD || (d === bestD && this.rng.chance(0.5))) {
             bestD = d;
@@ -464,22 +483,68 @@ export class UltraSimulation {
     // Creatures that don't need food pay for speed and sight in babies instead.
     if (!this.eats(c.sp)) p /= Math.max(0.2, 1 + this.upkeep(c));
     if (this.heatLeft > 0) p *= 0.5;
-    return p;
+    // With sexes on only females breed, so each tries more often (and rests less, see tryBreed)
+    // to keep births per head about the same.
+    if (this.settings.sexes) p /= Math.max(0.1, this.settings.femaleShare);
+    return Math.min(1, p);
+  }
+
+  /** With sexes on, a male that can father young. */
+  private isMateFor(c: Creature, o: Creature): boolean {
+    return o.alive && o.sp === c.sp && !o.female && o.age >= this.specs[o.sp].breedAge && o.sick <= 0;
+  }
+
+  /** A female ready to breed (with sexes on, only females have young). */
+  private readyToBreed(c: Creature): boolean {
+    const s = this.specs[c.sp];
+    if (c.age < s.breedAge || c.cooldown > 0 || c.sick > 0) return false;
+    if (this.settings.sexes && !c.female) return false;
+    return !this.eats(c.sp) || c.energy >= s.breedEnergy * s.maxEnergy;
+  }
+
+  /** Partners are noticed further off than prey (calls, scent), so small groups can still meet. */
+  private mateRange(c: Creature): number {
+    return Math.max(5, Math.round(2 * c.genes.sight));
+  }
+
+  /** Step towards the nearest partner in sight. True when the creature has used its move. */
+  private seekMate(c: Creature): boolean {
+    const s = this.specs[c.sp];
+    let partner: number | null = null;
+    const range = this.mateRange(c);
+    if (c.female) {
+      if (!this.readyToBreed(c)) return false;
+      partner = this.nearest(c.cell, [c.sp], range, (o) => this.isMateFor(c, o));
+    } else {
+      if (!this.isMateFor(c, c) || (this.eats(c.sp) && c.energy < s.breedEnergy * s.maxEnergy)) return false;
+      partner = this.nearest(c.cell, [c.sp], range, (o) => o.female && this.readyToBreed(o));
+    }
+    if (partner === null) return false;
+    if (this.distance(c.cell, partner) > 1) return this.stepRelative(c, partner, false);
+    // Already side by side: stay put (and graze).
+    this.graze(c);
+    return true;
   }
 
   private tryBreed(c: Creature, fromCell: number): void {
     const s = this.specs[c.sp];
-    if (c.age < s.breedAge || c.cooldown > 0 || c.sick > 0) return;
-    if (this.eats(c.sp) && c.energy < s.breedEnergy * s.maxEnergy) return;
+    if (!this.readyToBreed(c)) return;
+    let father: Creature | null = null;
+    if (this.settings.sexes) {
+      const cell = this.nearest(c.cell, [c.sp], this.mateRange(c), (o) => this.isMateFor(c, o));
+      if (cell === null) return;
+      father = this.grid[cell];
+    }
     if (!this.rng.chance(this.breedChance(c))) return;
     let placed = 0;
     for (let k = 0; k < s.litterSize; k++) {
       const cell = this.grid[fromCell] === null ? fromCell : this.pick(this.emptyNeighbours(c.cell));
       if (cell === undefined) break;
-      this.spawn(c.sp, cell, c);
+      this.spawn(c.sp, cell, c, father);
       placed++;
     }
-    if (placed) c.cooldown = s.breedCooldown;
+    // With sexes on, females rest less between litters to make up for the males (see breedChance).
+    if (placed) c.cooldown = this.settings.sexes ? Math.round(s.breedCooldown * this.settings.femaleShare) : s.breedCooldown;
   }
 
   private graze(c: Creature): void {
@@ -500,7 +565,10 @@ export class UltraSimulation {
       if (threat !== null && this.stepRelative(c, threat, true)) return true;
     }
     const prey = this.preyOf[c.sp];
-    if (prey.length && c.energy < s.hungerThreshold * s.maxEnergy) {
+    const hungry = prey.length > 0 && c.energy < s.hungerThreshold * s.maxEnergy;
+    // With sexes on, partners look for each other: before hunting when fed, after it when hungry.
+    if (this.settings.sexes && !hungry && this.seekMate(c)) return true;
+    if (hungry) {
       // Diet order is preference: eat the first kind of prey that is next to us.
       const nearby = this.neighbours(c.cell)
         .map((n) => this.grid[n])
@@ -517,6 +585,7 @@ export class UltraSimulation {
       }
       const target = this.nearest(c.cell, prey, sight);
       if (target !== null && this.stepRelative(c, target, false)) return true;
+      if (this.settings.sexes && this.seekMate(c)) return true;
     }
     this.wander(c);
     this.graze(c);
@@ -737,7 +806,7 @@ export class UltraSimulation {
     const showAlgae = this.settings.algae.enabled;
     for (let i = 0; i < this.grid.length; i++) {
       const c = this.grid[i];
-      if (c) out[i] = (PAINT_SPECIES + c.sp) | (c.sick > 0 ? PAINT_SICK : 0);
+      if (c) out[i] = (PAINT_SPECIES + c.sp) | (c.sick > 0 ? PAINT_SICK : 0) | (c.female ? PAINT_FEMALE : 0);
       else out[i] = showAlgae && this.algae[i] ? PAINT_ALGAE : PAINT_WATER;
     }
   }
@@ -747,6 +816,13 @@ export class UltraSimulation {
     let n = 0;
     for (const v of this.algae) n += v;
     return n;
+  }
+
+  /** Females alive in each species (all zero with sexes off). */
+  femaleCounts(): Record<SpeciesKey, number> {
+    const out = Object.fromEntries(SPECIES.map((k) => [k, 0])) as Record<SpeciesKey, number>;
+    for (const c of this.creatures) if (c.alive && c.female) out[SPECIES[c.sp]]++;
+    return out;
   }
 
   sickCount(): number {

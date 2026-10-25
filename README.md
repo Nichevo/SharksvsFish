@@ -65,6 +65,7 @@ The **Reefs and depths** starting point uses the same sea floor and depth zone o
 A separate page (`ultra.html`, the **Ultra Enhanced** tab) with its own engine (`src/engine/ultra.ts`), so Classic and Enhanced are left exactly as they are.
 
 - **Evolution:** every baby inherits its parent's speed, sight and lifespan, nudged up or down by a small random mutation. Good traits cost something: speed and sight burn extra energy, and a longer life means fewer babies. The **Evolution** chart tracks each species' average over time with a histogram of the current spread, and the ocean can be coloured by any trait to see where the fast or long-lived creatures are.
+- **Males and females** (off by default, under Evolution): a female breeds with an adult male nearby, and each baby takes each trait from its mother or its father at random, then mutates. Males are the darker shade in the ocean and females the lighter one. Females breed more often to make up for the males, so births per head stay about the same. Preset: *Males and females*.
 - **Seasons:** algae grows fastest in summer and slowest in winter. Winters are shaded on the charts.
 - **Events:** buttons set off a **disease** outbreak in the species you pick (it spreads to neighbours, kills some and the rest recover), a **fishing boat** that drags a net across the ocean, or a **heatwave** that withers algae, burns energy and slows breeding. They can also arrive at random.
 

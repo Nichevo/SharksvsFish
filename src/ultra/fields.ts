@@ -55,6 +55,13 @@ export const ULTRA_PRESETS: Record<string, { label: string; description: string;
       p.species.orcas.enabled = true;
     }),
   },
+  pairs: {
+    label: "Males and females",
+    description: "Evolution with two parents: every baby takes each trait from its mother or its father, then mutates.",
+    settings: preset((p) => {
+      p.sexes = true;
+    }),
+  },
   fixed: {
     label: "No evolution",
     description: "The same ocean with traits fixed, to compare against the evolving runs.",
@@ -103,6 +110,13 @@ export const ULTRA_FIELDS: FieldGroup[] = [
       { kind: "bool", path: "evolution.enabled", label: "Traits are inherited and mutate", help: "Each baby gets its parent's speed, sight and lifespan, nudged up or down a little." },
       { kind: "percent", path: "evolution.mutation", label: "Mutation size", help: "How big a typical nudge is, as a share of the parent's value." },
       { kind: "percent", path: "evolution.tradeOff", label: "Cost of good traits", help: "Speed and sight burn extra energy, and a longer life means fewer babies. At 0 every trait is free." },
+      {
+        kind: "bool",
+        path: "sexes",
+        label: "Separate males and females",
+        help: "A female breeds with a male nearby, and each baby takes each trait from its mother or its father at random before mutating. Females breed more often to make up for the males.",
+      },
+      { kind: "percent", path: "femaleShare", label: "Babies born female" },
     ],
   },
   {
