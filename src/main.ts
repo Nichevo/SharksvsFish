@@ -301,6 +301,23 @@ function drawPond(): void {
   pondCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   pondCtx.fillStyle = css.getPropertyValue("--water");
   pondCtx.fillRect(0, 0, w, h);
+  const terrain = sim.terrainMap?.() ?? null;
+  const zones = sim.zoneMap?.() ?? null;
+  $("#terrain-key").hidden = !terrain && !zones;
+  $("#key-rock").hidden = !terrain?.includes(1);
+  $("#key-reef").hidden = !terrain?.includes(2);
+  $("#key-zones").hidden = !zones;
+  if (terrain || zones) {
+    const water = [css.getPropertyValue("--water"), css.getPropertyValue("--water-middle"), css.getPropertyValue("--water-deep")];
+    const ground = ["", css.getPropertyValue("--rock"), css.getPropertyValue("--reef")];
+    for (let i = 0; i < cells.length; i++) {
+      const t = terrain?.[i] ?? 0;
+      const z = zones?.[i] ?? 0;
+      if (!t && !z) continue;
+      pondCtx.fillStyle = t ? ground[t] : water[Math.min(z, water.length - 1)];
+      pondCtx.fillRect((i % sim.width) * cell, Math.floor(i / sim.width) * cell, cell, cell);
+    }
+  }
   sim.paint(cells);
   const gap = cell >= 6 ? 1 : 0;
   for (let i = 0; i < cells.length; i++) {
@@ -349,6 +366,7 @@ function drawAll(): void {
   drawStats();
   drawCharts();
   drawTotals();
+  drawZoneTotals();
   if (!state.running) setRunButtonLabel();
 }
 
@@ -422,6 +440,20 @@ function drawTotals(): void {
     set("algae-alive", algae);
     set("algae-peak", totals.algaePeak);
   }
+}
+
+function drawZoneTotals(): void {
+  const rows = sim.zoneCounts?.() ?? null;
+  $("#zone-totals").hidden = !rows;
+  if (!rows) return;
+  $("#zone-rows").innerHTML = rows
+    .map(
+      (r, i) =>
+        `<tr><th><i class="key key-water-${["surface", "middle", "deep"][Math.min(i, 2)]}"></i>${r.name}</th>` +
+        `<td>${r.fish.toLocaleString()}</td><td>${r.sharks.toLocaleString()}</td>` +
+        `<td>${r.sharks ? (r.fish / r.sharks).toFixed(1) : "–"}</td></tr>`,
+    )
+    .join("");
 }
 
 function setRunButtonLabel(): void {

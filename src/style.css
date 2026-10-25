@@ -18,6 +18,10 @@
   --algae: #cfe8d4;
   --algae-line: #008300;
   --water: #eef3f8;
+  --water-middle: #dbe5f0;
+  --water-deep: #c5d5e6;
+  --rock: #9a958b;
+  --reef: #e3c08f;
   --warn-bg: #fff4d6;
   --radius: 10px;
 }
@@ -42,6 +46,14 @@
     --algae: #1f3a27;
     --algae-line: #008300;
     --water: #141d26;
+  --water-middle: #0f1923;
+  --water-deep: #090f15;
+  --rock: #57534b;
+  --reef: #7a5c35;
+    --water-middle: #0f1923;
+    --water-deep: #090f15;
+    --rock: #57534b;
+    --reef: #7a5c35;
     --warn-bg: #3a3017;
   }
 }
@@ -64,6 +76,10 @@
   --algae: #1f3a27;
   --algae-line: #008300;
   --water: #141d26;
+  --water-middle: #0f1923;
+  --water-deep: #090f15;
+  --rock: #57534b;
+  --reef: #7a5c35;
   --warn-bg: #3a3017;
 }
 
@@ -573,4 +589,30 @@ legend {
 }
 .offline-link:hover {
   text-decoration: underline;
+}
+
+.key-rock {
+  background: var(--rock);
+}
+.key-reef {
+  background: var(--reef);
+}
+.key-water-surface {
+  background: var(--water);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.key-water-middle {
+  background: var(--water-middle);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.key-water-deep {
+  background: var(--water-deep);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.zone-totals {
+  margin-top: 12px;
+}
+.zone-totals[hidden],
+.sex-key span[hidden] {
+  display: none;
 }

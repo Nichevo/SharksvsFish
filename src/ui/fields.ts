@@ -104,6 +104,35 @@ export const ENHANCED_FIELDS: FieldGroup[] = [
       { kind: "number", path: "algae.energyPerAlgae", label: "Energy per algae", min: 0, max: 1000 },
     ],
   },
+  {
+    title: "Sea floor",
+    fields: [
+      { kind: "bool", path: "terrain.mountains", label: "Undersea mountains", help: "Rock rising from the bottom of the ocean. Nothing can swim through rock." },
+      { kind: "percent", path: "terrain.mountainHeight", label: "Tallest peak (of the depth)" },
+      { kind: "bool", path: "terrain.rocks", label: "Rocks in open water" },
+      { kind: "percent", path: "terrain.rockCover", label: "Rock cover" },
+      { kind: "bool", path: "terrain.reefs", label: "Reefs", help: "Fish can swim into reefs and hide from sharks. Sharks can't get in or see them there." },
+      { kind: "percent", path: "terrain.reefCover", label: "Reef cover" },
+      { kind: "percent", path: "terrain.hideChance", label: "Hidden fish escape attacks" },
+    ],
+  },
+  {
+    title: "Depth zones",
+    fields: [
+      { kind: "bool", path: "zones.enabled", label: "Ocean has depth zones", help: "Splits the ocean into surface, middle and deep bands, top to bottom, each with its own values below." },
+      ...[0, 1, 2].flatMap((i): Field[] => {
+        const name = ["Surface", "Middle", "Deep"][i];
+        const b = `zones.bands.${i}`;
+        return [
+          { kind: "number", path: `${b}.fishBreed`, label: `${name}: fish breeding \u00d7`, min: 0, max: 10, step: 0.1 },
+          { kind: "number", path: `${b}.sharkBreed`, label: `${name}: shark breeding \u00d7`, min: 0, max: 10, step: 0.1 },
+          { kind: "number", path: `${b}.sharkSight`, label: `${name}: shark sight +/-`, min: -20, max: 20 },
+          { kind: "number", path: `${b}.energyUse`, label: `${name}: energy use \u00d7`, min: 0, max: 10, step: 0.1, help: i === 2 ? "Cold deep water: creatures burn energy more slowly." : undefined },
+          { kind: "number", path: `${b}.algaeGrowth`, label: `${name}: algae growth \u00d7`, min: 0, max: 10, step: 0.1, help: i === 2 ? "0: no sunlight, so no algae grows here." : undefined },
+        ];
+      }),
+    ],
+  },
 ];
 
 export function getPath(obj: Record<string, unknown>, path: string): unknown {

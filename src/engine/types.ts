@@ -39,6 +39,12 @@ export interface Simulation {
   ageLimits(): { fish: number; sharks: number };
   /** Cells with algae on them, or null when the model has no algae. */
   algaeCells(): number | null;
+  /** Cell -> 0 open water, 1 rock, 2 reef; null or missing when the pond has no terrain. */
+  terrainMap?(): Uint8Array | null;
+  /** Cell -> depth band index; null or missing without depth zones. */
+  zoneMap?(): Uint8Array | null;
+  /** Living fish and sharks in each depth band; null or missing without depth zones. */
+  zoneCounts?(): { name: string; fish: number; sharks: number }[] | null;
 }
 
 export const NO_SEX = 0;

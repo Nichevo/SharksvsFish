@@ -55,4 +55,14 @@ export const ENHANCED_PRESETS: Record<string, { label: string; description: stri
       p.fish = { ...p.fish, start: 500, breedChance: 0.6 };
     }),
   },
+  reef: {
+    label: "Reefs and depths",
+    description: "Algae food chain with undersea mountains, rocks and reefs to hide in, and surface, middle and deep zones.",
+    settings: preset((p) => {
+      p.algae.enabled = true;
+      p.fish = { ...p.fish, start: 500, breedChance: 0.6 };
+      p.terrain = { ...p.terrain, mountains: true, rocks: true, reefs: true };
+      p.zones.enabled = true;
+    }),
+  },
 };
