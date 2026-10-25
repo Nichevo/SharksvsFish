@@ -34,8 +34,14 @@ A cleaner model with many more settings, and some presets to start from:
 - **Sharks:** energy (starting, maximum, per fish eaten), the hunger level at which they hunt, the energy needed to breed, and whether they move into the fish's cell.
 - **Fish:** the chance they swim away from sharks they can see.
 - **Algae:** an optional food chain where fish must graze algae, which grows back over time.
+- **Sea floor:** undersea mountains rising from the bottom, rocks in open water, and reefs. Nothing can swim through rock. Fish can hide in reefs: sharks can't swim in or see them there, and most attacks on a hiding fish fail.
+- **Depth zones:** surface, middle and deep bands, each with its own fish and shark breeding, shark sight, energy use and algae growth. By default the surface is bright (more breeding and algae, sharks see further), and the deep is dark and cold (no algae, sharks see less, everything burns energy more slowly). A table under the totals counts fish and sharks in each zone.
 
-Presets: *Balanced ocean*, *Wa-Tor* (Dewdney's 1984 rules), *Pairs only* and *Algae food chain*.
+Sea floor and depth zones are off unless you switch them on, so the other presets run exactly as before.
+
+Presets: *Balanced ocean*, *Wa-Tor* (Dewdney's 1984 rules), *Pairs only*, *Algae food chain* and *Reefs and depths*.
+
+![Reefs and depths preset: grey undersea mountains and rocks, sandy reefs with fish hiding in them, and water shading darker with depth](docs/screenshots/reef.png)
 
 ![Enhanced mode: a 60×40 wrap-around ocean with the full set of options](docs/screenshots/enhanced.png)
 

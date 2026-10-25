@@ -42,6 +42,11 @@
             <span><i class="key key-fish-male"></i><i class="key key-fish-female"></i>Fish: dark male, light female</span>
             <span><i class="key key-shark key-shark-male"></i><i class="key key-shark key-shark-female"></i>Sharks: dark male, light female</span>
           </p>
+          <p id="terrain-key" class="sex-key" hidden>
+            <span id="key-rock"><i class="key key-rock"></i>Rock</span>
+            <span id="key-reef"><i class="key key-reef"></i>Reef (fish hide here)</span>
+            <span id="key-zones"><i class="key key-water-surface"></i><i class="key key-water-middle"></i><i class="key key-water-deep"></i>Surface, middle, deep</span>
+          </p>
           <p id="status" class="status"></p>
         </div>
 
@@ -96,6 +101,12 @@
               <tr><th><i class="key key-shark"></i>Sharks</th><td id="t-sharks-born"></td><td>–</td><td id="t-sharks-old"></td><td id="t-sharks-starved"></td><td id="t-sharks-alive"></td><td id="t-sharks-peak"></td></tr>
               <tr id="t-algae-row" hidden><th><i class="key key-algae"></i>Algae</th><td>–</td><td id="t-algae-eaten"></td><td>–</td><td>–</td><td id="t-algae-alive"></td><td id="t-algae-peak"></td></tr>
             </tbody>
+          </table>
+          <table id="zone-totals" class="totals zone-totals" hidden>
+            <thead>
+              <tr><th>Depth zone</th><th>Fish now</th><th>Sharks now</th><th>Fish per shark</th></tr>
+            </thead>
+            <tbody id="zone-rows"></tbody>
           </table>
         </div>
       </section>
