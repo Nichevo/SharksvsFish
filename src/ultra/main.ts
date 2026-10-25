@@ -3,6 +3,7 @@ import "./ultra.css";
 import { randomSeed } from "../engine/rng";
 import {
   PAINT_ALGAE,
+  PAINT_FEMALE,
   PAINT_SICK,
   PAINT_SPECIES,
   SPECIES,
@@ -31,8 +32,8 @@ const SHAPE: Record<SpeciesKey, "square" | "triangle" | "diamond" | "circle"> = 
   orcas: "circle",
 };
 
-function keyIcon(k: SpeciesKey): string {
-  return `<i class="key key-${SHAPE[k]}" style="background:var(${COLOR[k]})"></i>`;
+function keyIcon(k: SpeciesKey, sex?: "male" | "female"): string {
+  return `<i class="key key-${SHAPE[k]}" style="background:var(${COLOR[k]}${sex ? `-${sex}` : ""})"></i>`;
 }
 const TRAIT_INFO: Record<Trait, { label: string; unit: string; note: string }> = {
   speed: { label: "Speed", unit: "moves per iteration", note: "Faster fish escape and faster sharks catch more, but speed burns energy." },
@@ -259,7 +260,10 @@ function drawPond(): void {
     pond.style.height = `${h}px`;
   }
   const css = getComputedStyle(pond);
-  const speciesColor = SPECIES.map((k) => css.getPropertyValue(COLOR[k]));
+  // With sexes on, males are the darker shade and females the lighter one.
+  const sexes = sim.settings.sexes;
+  const speciesColor = SPECIES.map((k) => css.getPropertyValue(sexes ? `${COLOR[k]}-male` : COLOR[k]));
+  const femaleColor = SPECIES.map((k) => css.getPropertyValue(`${COLOR[k]}-female`));
   const sick = css.getPropertyValue("--sick");
   pondCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   pondCtx.fillStyle = css.getPropertyValue(sim.heatwaveLeft() > 0 ? "--water-hot" : "--water");
@@ -281,9 +285,9 @@ function drawPond(): void {
       pondCtx.fillRect(x + gap, y + gap, cell - gap * 2, cell - gap * 2);
       continue;
     }
-    const sp = (v & ~PAINT_SICK) - PAINT_SPECIES;
+    const sp = (v & ~(PAINT_SICK | PAINT_FEMALE)) - PAINT_SPECIES;
     if (view !== "species") pondCtx.fillStyle = divergingColor(css, traitCells[i] / range);
-    else pondCtx.fillStyle = v & PAINT_SICK ? sick : speciesColor[sp];
+    else pondCtx.fillStyle = v & PAINT_SICK ? sick : v & PAINT_FEMALE ? femaleColor[sp] : speciesColor[sp];
     drawShape(SHAPE[SPECIES[sp]], x, y, cell, gap);
   }
   // Fishing nets sweep across the ocean.
@@ -322,7 +326,10 @@ function drawPondKey(): void {
   const key = $("#pond-key");
   if (view === "species") {
     key.innerHTML =
-      live.map((k) => `<span>${keyIcon(k)}${SPECIES_LABEL[k]}</span>`).join("") +
+      (sim.settings.sexes
+        ? live.map((k) => `<span>${keyIcon(k, "male")}${keyIcon(k, "female")}${SPECIES_LABEL[k]}</span>`).join("") +
+          `<span class="muted">dark male, light female</span>`
+        : live.map((k) => `<span>${keyIcon(k)}${SPECIES_LABEL[k]}</span>`).join("")) +
       `<span><i class="key" style="background:var(--sick)"></i>Sick</span>` +
       (sim.settings.algae.enabled ? `<span><i class="key" style="background:var(--algae)"></i>Algae</span>` : "") +
       `<span><i class="key" style="background:var(--net)"></i>Fishing net</span>`;
@@ -334,10 +341,13 @@ function drawPondKey(): void {
 
 function drawStats(): void {
   const n = sim.counts();
+  const females = sim.femaleCounts();
   $("#stat-tick").textContent = String(sim.tick);
   $("#species-stats").innerHTML = live.map(
     (k) =>
-      `<div class="stat"><span class="stat-label">${keyIcon(k)}${SPECIES_LABEL[k]}</span><span class="stat-value">${n[k]}</span></div>`,
+      `<div class="stat"><span class="stat-label">${keyIcon(k)}${SPECIES_LABEL[k]}</span><span class="stat-value">${n[k]}</span>` +
+      (sim.settings.sexes ? `<span class="stat-sexes">${n[k] - females[k]} male, ${females[k]} female</span>` : "") +
+      `</div>`,
   ).join("");
   $("#stat-gen").textContent = (history.fishGen.at(-1) ?? 0).toFixed(0);
 
