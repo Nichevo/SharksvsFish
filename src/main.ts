@@ -147,7 +147,9 @@ function renderField(field: Field, target: Record<string, unknown>): HTMLElement
       input.step = String(field.step ?? 1);
       input.value = String(value);
       input.addEventListener("change", () => {
-        const v = clamp(Math.round(+input.value), field.min, field.max);
+        // Round to the field's step (whole numbers unless it says otherwise).
+        const step = field.step ?? 1;
+        const v = clamp(+(Math.round(+input.value / step) * step).toFixed(6), field.min, field.max);
         input.value = String(v);
         setPath(target, field.path, v);
       });
