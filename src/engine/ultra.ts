@@ -7,21 +7,30 @@
  */
 import { Rng } from "./rng";
 
-export type SpeciesKey = "fish" | "sharks";
-/** Order matters: it is the species index used in the engine and in paint(). */
-export const SPECIES: SpeciesKey[] = ["fish", "sharks"];
-/** Who each species eats. Fish graze algae when the food chain is on. */
+export type SpeciesKey = "fish" | "barracuda" | "sharks" | "orcas";
+/** Order matters: it is the species index used in the engine and in paint(). Fish come first. */
+export const SPECIES: SpeciesKey[] = ["fish", "barracuda", "sharks", "orcas"];
+/** Who each species eats, favourite first. Fish graze algae when the food chain is on. */
 export const DIET: Record<SpeciesKey, SpeciesKey[]> = {
   fish: [],
-  sharks: ["fish"],
+  barracuda: ["fish"],
+  sharks: ["fish", "barracuda"],
+  orcas: ["sharks", "barracuda"],
 };
-export const SPECIES_LABEL: Record<SpeciesKey, string> = { fish: "Fish", sharks: "Sharks" };
+export const SPECIES_LABEL: Record<SpeciesKey, string> = { fish: "Fish", barracuda: "Barracuda", sharks: "Sharks", orcas: "Orcas" };
+
+/** The species switched on in these settings, in SPECIES order. */
+export function activeSpecies(s: Pick<UltraSettings, "species">): SpeciesKey[] {
+  return SPECIES.filter((k) => s.species[k].enabled);
+}
 
 export type Trait = "speed" | "sight" | "lifespan";
 export const TRAITS: Trait[] = ["speed", "sight", "lifespan"];
 const TRAIT_LIMITS: Record<Trait, [number, number]> = { speed: [0.2, 4], sight: [0, 8], lifespan: [3, 5000] };
 
 export interface UltraSpecies {
+  /** Fish and sharks are always on; barracuda and orcas are optional. */
+  enabled: boolean;
   start: number;
   breedAge: number;
   /** Starting lifespan (the lifespan trait evolves from here). */
@@ -43,6 +52,8 @@ export interface UltraSpecies {
   breedEnergy: number;
   /** Chance it swims away from a predator it can see. */
   fleeChance: number;
+  /** Chance an attack on it fails (a predator next to it misses). */
+  dodgeChance: number;
 }
 
 export interface UltraSettings {
@@ -87,6 +98,7 @@ export interface UltraSettings {
 }
 
 const species = (s: Partial<UltraSpecies>): UltraSpecies => ({
+  enabled: true,
   start: 100,
   breedAge: 3,
   maxAge: 40,
@@ -101,6 +113,7 @@ const species = (s: Partial<UltraSpecies>): UltraSpecies => ({
   hungerThreshold: 0.7,
   breedEnergy: 0.3,
   fleeChance: 0.5,
+  dodgeChance: 0,
   ...s,
 });
 
@@ -122,6 +135,40 @@ export const ULTRA_DEFAULTS: Omit<UltraSettings, "seed"> = {
       maxEnergy: 4,
       energyPerMeal: 2,
       hungerThreshold: 0.7,
+      breedEnergy: 0.5,
+      fleeChance: 0.3,
+    }),
+    // A mid-level predator: eats fish, and is eaten by sharks and orcas.
+    barracuda: species({
+      enabled: false,
+      start: 60,
+      breedAge: 8,
+      maxAge: 80,
+      breedChance: 0.3,
+      breedCooldown: 10,
+      sight: 2,
+      startEnergy: 12,
+      maxEnergy: 20,
+      energyPerMeal: 4,
+      hungerThreshold: 0.25,
+      breedEnergy: 0.15,
+      fleeChance: 0.6,
+      dodgeChance: 0.5,
+    }),
+    // The apex predator: hunts sharks (and barracuda), and nothing hunts it.
+    orcas: species({
+      enabled: false,
+      start: 10,
+      breedAge: 25,
+      maxAge: 300,
+      breedChance: 0.4,
+      breedCooldown: 40,
+      sight: 4,
+      speed: 1.2,
+      startEnergy: 30,
+      maxEnergy: 40,
+      energyPerMeal: 12,
+      hungerThreshold: 0.6,
       breedEnergy: 0.5,
       fleeChance: 0,
     }),
@@ -158,7 +205,7 @@ export type EventKind = "disease" | "boat" | "heatwave";
 export type Season = "spring" | "summer" | "autumn" | "winter";
 export interface LoggedEvent {
   tick: number;
-  kind: EventKind;
+  kind: EventKind | "extinct";
   detail: string;
 }
 
@@ -220,7 +267,10 @@ export class UltraSimulation {
   /** For each species index, the species indices that eat it. */
   private predatorsOf: number[][];
   private preyOf: number[][];
+  /** Whether each species index is switched on. */
+  private active: boolean[];
   private heatLeft = 0;
+  private lastCounts: Record<SpeciesKey, number>;
   private boatList: { x: number }[] = [];
   private log: LoggedEvent[] = [];
 
@@ -230,6 +280,7 @@ export class UltraSimulation {
     this.height = Math.max(5, Math.floor(settings.height));
     this.rng = new Rng(settings.seed);
     this.specs = SPECIES.map((k) => this.settings.species[k]);
+    this.active = this.specs.map((s, i) => i === 0 || s.enabled);
     this.preyOf = SPECIES.map((k) => DIET[k].map((p) => SPECIES.indexOf(p)));
     this.predatorsOf = SPECIES.map((_, i) => SPECIES.flatMap((_k, j) => (this.preyOf[j].includes(i) ? [j] : [])));
     const cells = this.width * this.height;
@@ -239,9 +290,10 @@ export class UltraSimulation {
 
     const free = this.rng.shuffle([...Array(cells).keys()]);
     SPECIES.forEach((_, i) => {
-      const n = Math.min(Math.floor(this.specs[i].start), free.length);
+      const n = this.active[i] ? Math.min(Math.floor(this.specs[i].start), free.length) : 0;
       for (let k = 0; k < n; k++) this.spawn(i, free.pop()!, null);
     });
+    this.lastCounts = this.counts();
   }
 
   // ---------- helpers ----------
@@ -449,11 +501,13 @@ export class UltraSimulation {
     }
     const prey = this.preyOf[c.sp];
     if (prey.length && c.energy < s.hungerThreshold * s.maxEnergy) {
-      const meal = this.pick(
-        this.neighbours(c.cell)
-          .map((n) => this.grid[n])
-          .filter((o): o is Creature => !!o && o.alive && prey.includes(o.sp)),
-      );
+      // Diet order is preference: eat the first kind of prey that is next to us.
+      const nearby = this.neighbours(c.cell)
+        .map((n) => this.grid[n])
+        .filter((o): o is Creature => !!o && o.alive && prey.includes(o.sp));
+      const favourite = Math.min(...nearby.map((o) => prey.indexOf(o.sp)));
+      const meal = this.pick(nearby.filter((o) => prey.indexOf(o.sp) === favourite));
+      if (meal && this.rng.chance(this.specs[meal.sp].dodgeChance)) return false;
       if (meal) {
         const cell = meal.cell;
         this.die(meal, "eaten");
@@ -545,7 +599,7 @@ export class UltraSimulation {
     const ev = this.settings.events;
     if (ev.randomEvery > 0 && this.rng.chance(1 / ev.randomEvery)) {
       const kind = this.pick<EventKind>(["disease", "boat", "heatwave"])!;
-      this.trigger(kind, this.pick(SPECIES)!);
+      this.trigger(kind, this.pick(SPECIES.filter((_k, i) => this.active[i]))!);
     }
     // Boats drag a net down the full height, one column per iteration.
     for (const b of this.boatList) {
@@ -556,7 +610,8 @@ export class UltraSimulation {
         for (let y = 0; y < this.height; y++) {
           const c = this.grid[y * this.width + x];
           if (!c) continue;
-          const p = c.sp === 0 ? ev.boats.catchChance : ev.boats.bycatch;
+          // Nets are meant for fish (barracuda included); sharks and orcas are bycatch.
+          const p = SPECIES[c.sp] === "fish" || SPECIES[c.sp] === "barracuda" ? ev.boats.catchChance : ev.boats.bycatch;
           if (this.rng.chance(p)) this.die(c, "caught");
         }
       }
@@ -615,7 +670,11 @@ export class UltraSimulation {
     if (this.tick % 20 === 0) this.creatures = this.creatures.filter((c) => c.alive);
 
     const n = this.counts();
-    const predators = SPECIES.some((k, i) => i > 0 && this.specs[i].start > 0 && n[k] > 0);
+    SPECIES.forEach((k, i) => {
+      if (this.active[i] && n[k] === 0 && this.lastCounts[k] > 0) this.log.push({ tick: this.tick, kind: "extinct", detail: `The ${SPECIES_LABEL[k].toLowerCase()} died out` });
+    });
+    this.lastCounts = n;
+    const predators = SPECIES.some((k, i) => i > 0 && this.active[i] && this.specs[i].start > 0 && n[k] > 0);
     if (n.fish === 0 || !predators) this.ended = true;
     if (this.settings.maxTicks > 0 && this.tick >= this.settings.maxTicks) this.ended = true;
   }
@@ -631,7 +690,7 @@ export class UltraSimulation {
   /** Whether every species that started with some creatures is still alive. */
   allSurvive(): boolean {
     const n = this.counts();
-    return SPECIES.every((k, i) => this.specs[i].start <= 0 || n[k] > 0);
+    return SPECIES.every((k, i) => !this.active[i] || this.specs[i].start <= 0 || n[k] > 0);
   }
 
   traitStats(): Record<SpeciesKey, TraitStats> {

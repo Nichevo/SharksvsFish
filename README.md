@@ -50,7 +50,9 @@ A separate page (`ultra.html`, the **Ultra Enhanced** tab) with its own engine (
 - **Seasons:** algae grows fastest in summer and slowest in winter. Winters are shaded on the charts.
 - **Events:** buttons set off a **disease** outbreak in the species you pick (it spreads to neighbours, kills some and the rest recover), a **fishing boat** that drags a net across the ocean, or a **heatwave** that withers algae, burns energy and slows breeding. They can also arrive at random.
 
-Presets: *Evolving ocean*, *Arms race*, *Hard winters*, *Eventful ocean* and *No evolution* (for comparison). The offline download for this page is `sharks-vs-fish-ultra.html`.
+- **More species:** optional **barracuda**, a mid-level predator that eats fish and is eaten by sharks and orcas, and **orcas**, the apex predator that hunts sharks first and barracuda second. Each species has its own shape in the ocean (fish squares, barracuda triangles, sharks diamonds, orcas circles), and the event log notes when a species dies out.
+
+Presets: *Evolving ocean*, *Arms race*, *Hard winters*, *Eventful ocean*, *Food web* (all four species), *Orcas* and *No evolution* (for comparison). The offline download for this page is `sharks-vs-fish-ultra.html`.
 
 ## Charts
 

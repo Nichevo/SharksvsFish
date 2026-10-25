@@ -7,6 +7,7 @@ import {
   PAINT_SPECIES,
   SPECIES,
   SPECIES_LABEL,
+  activeSpecies,
   TRAITS,
   UltraSimulation,
   type DeathCause,
@@ -19,7 +20,18 @@ import { ULTRA_FIELDS, ULTRA_PRESETS, type UltraPreset } from "./fields";
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
-const COLOR: Record<SpeciesKey, string> = { fish: "--fish", sharks: "--shark" };
+const COLOR: Record<SpeciesKey, string> = { fish: "--fish", barracuda: "--barracuda", sharks: "--shark", orcas: "--orca" };
+/** Each species has its own shape so they don't rely on colour alone. */
+const SHAPE: Record<SpeciesKey, "square" | "triangle" | "diamond" | "circle"> = {
+  fish: "square",
+  barracuda: "triangle",
+  sharks: "diamond",
+  orcas: "circle",
+};
+
+function keyIcon(k: SpeciesKey): string {
+  return `<i class="key key-${SHAPE[k]}" style="background:var(${COLOR[k]})"></i>`;
+}
 const TRAIT_INFO: Record<Trait, { label: string; unit: string; note: string }> = {
   speed: { label: "Speed", unit: "moves per iteration", note: "Faster fish escape and faster sharks catch more, but speed burns energy." },
   sight: { label: "Sight", unit: "cells", note: "Seeing further helps hunt and flee, but costs a little energy." },
@@ -41,6 +53,8 @@ let trait: Trait = "speed";
 let view: "species" | Trait = "species";
 
 let sim: UltraSimulation;
+/** Species switched on in the current pond. */
+let live: SpeciesKey[] = [];
 let cells: Uint8Array;
 let traitCells: Float32Array;
 let history: Record<string, number[]>;
@@ -120,10 +134,15 @@ function clamp(v: number, lo: number, hi: number): number {
 
 function newPond(): void {
   sim = new UltraSimulation({ ...structuredClone(state.settings), seed: state.seed });
+  live = activeSpecies(sim.settings);
+  const target = $<HTMLSelectElement>("#ev-disease-target");
+  const picked = target.value;
+  target.replaceChildren(...live.map((k) => new Option(SPECIES_LABEL[k], k, false, k === picked)));
+  $("#hist-box").replaceChildren();
   cells = new Uint8Array(sim.width * sim.height);
   traitCells = new Float32Array(sim.width * sim.height);
   history = { ticks: [], algae: [], growth: [] };
-  for (const k of SPECIES) {
+  for (const k of live) {
     for (const s of ["", "Died", ...TRAITS, "Gen"]) history[k + s] = [];
     for (const c of ["born", ...CAUSES, "peak"]) totals[`${k}.${c}`] = 0;
   }
@@ -140,7 +159,7 @@ function record(): void {
   history.ticks.push(sim.tick);
   history.algae.push(sim.algaeCells() ?? 0);
   history.growth.push(sim.growthFactor());
-  for (const k of SPECIES) {
+  for (const k of live) {
     history[k].push(n[k]);
     for (const t of TRAITS) history[k + t].push(stats[k].count ? stats[k][t] : NaN);
     history[k + "Gen"].push(stats[k].generation);
@@ -254,17 +273,7 @@ function drawPond(): void {
     const sp = (v & ~PAINT_SICK) - PAINT_SPECIES;
     if (view !== "species") pondCtx.fillStyle = divergingColor(css, traitCells[i] / range);
     else pondCtx.fillStyle = v & PAINT_SICK ? sick : speciesColor[sp];
-    if (sp > 0 && cell >= 6) {
-      // Predators get a diamond so species don't rely on colour alone.
-      pondCtx.beginPath();
-      pondCtx.moveTo(x + cell / 2, y + gap);
-      pondCtx.lineTo(x + cell - gap, y + cell / 2);
-      pondCtx.lineTo(x + cell / 2, y + cell - gap);
-      pondCtx.lineTo(x + gap, y + cell / 2);
-      pondCtx.fill();
-    } else {
-      pondCtx.fillRect(x + gap, y + gap, cell - gap * 2, cell - gap * 2);
-    }
+    drawShape(SHAPE[SPECIES[sp]], x, y, cell, gap);
   }
   // Fishing nets sweep across the ocean.
   pondCtx.fillStyle = css.getPropertyValue("--net");
@@ -276,11 +285,33 @@ function drawPond(): void {
   drawPondKey();
 }
 
+function drawShape(shape: (typeof SHAPE)[SpeciesKey], x: number, y: number, cell: number, gap: number): void {
+  const c = pondCtx;
+  if (shape === "square" || cell < 6) {
+    c.fillRect(x + gap, y + gap, cell - gap * 2, cell - gap * 2);
+    return;
+  }
+  c.beginPath();
+  if (shape === "diamond") {
+    c.moveTo(x + cell / 2, y + gap);
+    c.lineTo(x + cell - gap, y + cell / 2);
+    c.lineTo(x + cell / 2, y + cell - gap);
+    c.lineTo(x + gap, y + cell / 2);
+  } else if (shape === "triangle") {
+    c.moveTo(x + cell / 2, y + gap);
+    c.lineTo(x + cell - gap, y + cell - gap);
+    c.lineTo(x + gap, y + cell - gap);
+  } else {
+    c.arc(x + cell / 2, y + cell / 2, cell / 2 - gap, 0, Math.PI * 2);
+  }
+  c.fill();
+}
+
 function drawPondKey(): void {
   const key = $("#pond-key");
   if (view === "species") {
     key.innerHTML =
-      SPECIES.map((k, i) => `<span><i class="key ${i ? "key-shark" : ""}" style="background:var(${COLOR[k]})"></i>${SPECIES_LABEL[k]}</span>`).join("") +
+      live.map((k) => `<span>${keyIcon(k)}${SPECIES_LABEL[k]}</span>`).join("") +
       `<span><i class="key" style="background:var(--sick)"></i>Sick</span>` +
       (sim.settings.algae.enabled ? `<span><i class="key" style="background:var(--algae)"></i>Algae</span>` : "") +
       `<span><i class="key" style="background:var(--net)"></i>Fishing net</span>`;
@@ -293,9 +324,9 @@ function drawPondKey(): void {
 function drawStats(): void {
   const n = sim.counts();
   $("#stat-tick").textContent = String(sim.tick);
-  $("#species-stats").innerHTML = SPECIES.map(
-    (k, i) =>
-      `<div class="stat"><span class="stat-label"><i class="key ${i ? "key-shark" : ""}" style="background:var(${COLOR[k]})"></i>${SPECIES_LABEL[k]}</span><span class="stat-value">${n[k]}</span></div>`,
+  $("#species-stats").innerHTML = live.map(
+    (k) =>
+      `<div class="stat"><span class="stat-label">${keyIcon(k)}${SPECIES_LABEL[k]}</span><span class="stat-value">${n[k]}</span></div>`,
   ).join("");
   $("#stat-gen").textContent = (history.fishGen.at(-1) ?? 0).toFixed(0);
 
@@ -312,8 +343,8 @@ function drawStats(): void {
 
   let status = "";
   if (sim.finished()) {
-    const dead = SPECIES.filter((k) => n[k] === 0).map((k) => SPECIES_LABEL[k].toLowerCase());
-    status = dead.length === SPECIES.length ? "Everything died out." : dead.length ? `The ${dead.join(" and ")} died out.` : "Reached the iteration limit.";
+    const dead = live.filter((k) => n[k] === 0).map((k) => SPECIES_LABEL[k].toLowerCase());
+    status = dead.length === live.length ? "Everything died out." : dead.length ? `The ${dead.join(" and ")} died out.` : "Reached the iteration limit.";
   } else if (sim.sickCount()) status = `${sim.sickCount()} sick.`;
   $("#status").textContent = status;
 }
@@ -350,17 +381,17 @@ function drawCharts(): void {
   if (chartTab === "population") {
     title = "Population over time";
     note = winters.trim();
-    lines = SPECIES.map((k) => ({ label: SPECIES_LABEL[k], color: COLOR[k], values: history[k] }));
+    lines = live.map((k) => ({ label: SPECIES_LABEL[k], color: COLOR[k], values: history[k] }));
   } else if (chartTab === "traits") {
     const info = TRAIT_INFO[trait];
     title = `Average ${info.label.toLowerCase()} (${info.unit})`;
     note = sim.settings.evolution.enabled ? info.note : "Evolution is off, so traits stay where they started.";
-    lines = SPECIES.map((k) => ({ label: SPECIES_LABEL[k], color: COLOR[k], values: history[k + trait] }));
+    lines = live.map((k) => ({ label: SPECIES_LABEL[k], color: COLOR[k], values: history[k + trait] }));
     drawHists();
   } else if (chartTab === "deaths") {
     title = "Deaths per iteration";
     note = "All causes, as a 10-iteration average. The totals table below splits them by cause.";
-    lines = SPECIES.map((k) => ({ label: SPECIES_LABEL[k], color: COLOR[k], values: smooth(history[k + "Died"], 10) }));
+    lines = live.map((k) => ({ label: SPECIES_LABEL[k], color: COLOR[k], values: smooth(history[k + "Died"], 10) }));
   } else {
     title = "Algae and fish";
     note = sim.settings.algae.enabled
@@ -385,10 +416,10 @@ function drawCharts(): void {
 
 function drawHists(): void {
   const box = $("#hist-box");
-  if (box.childElementCount !== SPECIES.length) {
-    box.innerHTML = SPECIES.map((k) => `<figure><figcaption>${SPECIES_LABEL[k]} right now</figcaption><canvas data-hist="${k}"></canvas></figure>`).join("");
+  if (box.childElementCount !== live.length) {
+    box.innerHTML = live.map((k) => `<figure><figcaption>${SPECIES_LABEL[k]} right now</figcaption><canvas data-hist="${k}"></canvas></figure>`).join("");
   }
-  for (const k of SPECIES) {
+  for (const k of live) {
     const start = { speed: sim.settings.species[k].speed, sight: sim.settings.species[k].sight, lifespan: sim.settings.species[k].maxAge }[trait];
     drawHistogram(box.querySelector(`[data-hist="${k}"]`)!, sim.traitValues(k, trait), COLOR[k], start, TRAIT_INFO[trait].unit);
   }
@@ -397,9 +428,9 @@ function drawHists(): void {
 function drawTotals(): void {
   const n = sim.counts();
   const cell = (v: number) => `<td>${v.toLocaleString()}</td>`;
-  $("#totals-body").innerHTML = SPECIES.map(
-    (k, i) =>
-      `<tr><th><i class="key ${i ? "key-shark" : ""}" style="background:var(${COLOR[k]})"></i>${SPECIES_LABEL[k]}</th>` +
+  $("#totals-body").innerHTML = live.map(
+    (k) =>
+      `<tr><th>${keyIcon(k)}${SPECIES_LABEL[k]}</th>` +
       cell(totals[`${k}.born`]) +
       CAUSES.map((c) => cell(totals[`${k}.${c}`])).join("") +
       cell(n[k]) +
@@ -481,7 +512,6 @@ function init(): void {
   $("#csv").addEventListener("click", downloadCsv);
 
   const target = $<HTMLSelectElement>("#ev-disease-target");
-  for (const k of SPECIES) target.add(new Option(SPECIES_LABEL[k], k));
   $("#ev-disease").addEventListener("click", () => {
     sim.trigger("disease", target.value as SpeciesKey);
     drawAll();

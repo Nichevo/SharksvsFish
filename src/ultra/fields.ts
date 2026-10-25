@@ -40,6 +40,21 @@ export const ULTRA_PRESETS: Record<string, { label: string; description: string;
       p.events.randomEvery = 150;
     }),
   },
+  foodweb: {
+    label: "Food web",
+    description: "Adds barracuda in the middle (they eat fish, sharks eat them) and orcas at the top, hunting sharks.",
+    settings: preset((p) => {
+      p.species.barracuda.enabled = true;
+      p.species.orcas.enabled = true;
+    }),
+  },
+  orcas: {
+    label: "Orcas",
+    description: "Fish, sharks and a few orcas that hunt the sharks. Watch whether the sharks get faster to escape.",
+    settings: preset((p) => {
+      p.species.orcas.enabled = true;
+    }),
+  },
   fixed: {
     label: "No evolution",
     description: "The same ocean with traits fixed, to compare against the evolving runs.",
@@ -66,6 +81,11 @@ const species = (key: SpeciesKey): Field[] => {
     { kind: "percent", path: `${p}.breedEnergy`, label: "Needs energy to breed" },
   ];
 };
+
+const predator = (key: SpeciesKey): Field[] => [
+  ...species(key),
+  { kind: "percent", path: `species.${key}.hungerThreshold`, label: "Hunts below (of max energy)" },
+];
 
 export const ULTRA_FIELDS: FieldGroup[] = [
   {
@@ -104,8 +124,8 @@ export const ULTRA_FIELDS: FieldGroup[] = [
       { kind: "percent", path: "events.disease.lethality", label: "Disease: chance of dying each iteration" },
       { kind: "number", path: "events.disease.duration", label: "Disease: iterations until recovered", min: 1, max: 1000 },
       { kind: "number", path: "events.boats.width", label: "Fishing net width (cells)", min: 1, max: 50 },
-      { kind: "percent", path: "events.boats.catchChance", label: "Chance a fish in the net is caught" },
-      { kind: "percent", path: "events.boats.bycatch", label: "Chance a shark is caught too" },
+      { kind: "percent", path: "events.boats.catchChance", label: "Chance a fish in the net is caught", help: "Barracuda count as fish here." },
+      { kind: "percent", path: "events.boats.bycatch", label: "Chance a shark or orca is caught too" },
       { kind: "number", path: "events.heatwave.length", label: "Heatwave length", min: 1, max: 1000 },
     ],
   },
@@ -114,7 +134,24 @@ export const ULTRA_FIELDS: FieldGroup[] = [
     fields: [...species("fish"), { kind: "percent", path: "species.fish.fleeChance", label: "Chance to flee predators" }],
   },
   {
+    title: "Barracuda",
+    fields: [
+      { kind: "bool", path: "species.barracuda.enabled", label: "Include barracuda", help: "A mid-level predator: eats fish, and sharks and orcas eat it." },
+      ...predator("barracuda"),
+      { kind: "percent", path: "species.barracuda.fleeChance", label: "Chance to flee predators" },
+      { kind: "percent", path: "species.barracuda.dodgeChance", label: "Chance to dodge an attack" },
+    ],
+  },
+  {
     title: "Sharks",
-    fields: [...species("sharks"), { kind: "percent", path: "species.sharks.hungerThreshold", label: "Hunts below (of max energy)" }],
+    fields: [
+      ...predator("sharks"),
+      { kind: "percent", path: "species.sharks.fleeChance", label: "Chance to flee orcas" },
+      { kind: "percent", path: "species.sharks.dodgeChance", label: "Chance to dodge an orca" },
+    ],
+  },
+  {
+    title: "Orcas",
+    fields: [{ kind: "bool", path: "species.orcas.enabled", label: "Include orcas", help: "The apex predator: hunts sharks first, and barracuda." }, ...predator("orcas")],
   },
 ];

@@ -135,4 +135,35 @@ describe("ultra", () => {
     expect(b.algaeCells()!).toBeLessThan(a.algaeCells()! * 0.7);
     expect(b.heatwaveLeft()).toBe(10);
   });
+
+  it("barracuda and orcas stay out unless switched on", () => {
+    const sim = make();
+    expect(sim.counts().barracuda).toBe(0);
+    expect(sim.counts().orcas).toBe(0);
+  });
+
+  it("the food web eats up the chain", () => {
+    const sim = make((s) => {
+      s.species.barracuda.enabled = true;
+      s.species.orcas.enabled = true;
+    }, 4);
+    const eaten = { fish: 0, barracuda: 0, sharks: 0 };
+    for (let i = 0; i < 80 && !sim.finished(); i++) {
+      sim.step();
+      for (const k of ["fish", "barracuda", "sharks"] as const) eaten[k] += sim.lastEvents()[k].eaten;
+    }
+    expect(eaten.fish).toBeGreaterThan(0);
+    expect(eaten.barracuda).toBeGreaterThan(0);
+    expect(eaten.sharks).toBeGreaterThan(0);
+  });
+
+  it("logs when a species dies out", () => {
+    const sim = make((s) => {
+      s.species.barracuda.enabled = true;
+      s.species.barracuda.start = 3;
+      s.species.barracuda.breedChance = 0;
+    });
+    for (let i = 0; i < 200 && sim.counts().barracuda > 0; i++) sim.step();
+    expect(sim.eventLog().some((e) => e.kind === "extinct" && e.detail.includes("barracuda"))).toBe(true);
+  });
 });
