@@ -26,11 +26,12 @@ let cells: Uint8Array;
 let history: History;
 const chart = new LineChart($("#chart"), $("#tooltip"));
 
-type ChartTab = "population" | "births" | "eaten" | "deaths" | "ages" | "cycle";
+type ChartTab = "population" | "births" | "eaten" | "deaths" | "ages" | "cycle" | "algae";
 let chartTab: ChartTab = "population";
 
 const FISH_LINE = { color: "--fish" };
 const SHARK_LINE = { color: "--shark" };
+const ALGAE_LINE = { color: "--algae-line" };
 const LINE_CHARTS: Partial<Record<ChartTab, { title: string; note: string; series: SeriesDef[]; smoothable: boolean }>> = {
   population: {
     title: "Population over time",
@@ -65,9 +66,41 @@ const LINE_CHARTS: Partial<Record<ChartTab, { title: string; note: string; serie
     ],
     smoothable: true,
   },
+  algae: {
+    title: "Algae and fish",
+    note: "Patches of algae (cells with food on them) against the fish grazing them. Fish that can't find algae starve.",
+    series: [
+      { key: "algae", label: "Algae patches", ...ALGAE_LINE },
+      { key: "fish", label: "Fish", ...FISH_LINE },
+    ],
+    smoothable: false,
+  },
 };
 
-const totals = { fishBorn: 0, sharksBorn: 0, fishEaten: 0, fishOldAge: 0, fishStarved: 0, sharksOldAge: 0, sharksStarved: 0, fishPeak: 0, sharksPeak: 0 };
+/** The Eaten chart also shows algae grazed when the food chain is on. */
+const EATEN_WITH_ALGAE = {
+  title: "Eaten per iteration",
+  note: "Fish eaten by sharks, and algae patches grazed by fish, in each iteration.",
+  series: [
+    { key: "fishEaten", label: "Fish eaten", ...SHARK_LINE },
+    { key: "algaeEaten", label: "Algae grazed", ...ALGAE_LINE },
+  ] as SeriesDef[],
+  smoothable: true,
+};
+
+const totals = {
+  fishBorn: 0,
+  sharksBorn: 0,
+  fishEaten: 0,
+  fishOldAge: 0,
+  fishStarved: 0,
+  sharksOldAge: 0,
+  sharksStarved: 0,
+  fishPeak: 0,
+  sharksPeak: 0,
+  algaeEaten: 0,
+  algaePeak: 0,
+};
 const pond = $<HTMLCanvasElement>("#pond");
 const pondCtx = pond.getContext("2d")!;
 
@@ -180,6 +213,10 @@ function record(): void {
   history.sharksStarved.push(e?.sharksStarved ?? 0);
   history.fishDied.push(e ? e.fishEaten + e.fishOldAge + e.fishStarved : 0);
   history.sharksDied.push(e ? e.sharksOldAge + e.sharksStarved : 0);
+  const algae = sim.algaeCells() ?? 0;
+  history.algae.push(algae);
+  history.algaeEaten.push(e?.algaeEaten ?? 0);
+  totals.algaePeak = Math.max(totals.algaePeak, algae);
   if (e) {
     totals.fishBorn += e.fishBorn;
     totals.sharksBorn += e.sharksBorn;
@@ -188,6 +225,7 @@ function record(): void {
     totals.fishStarved += e.fishStarved;
     totals.sharksOldAge += e.sharksOldAge;
     totals.sharksStarved += e.sharksStarved;
+    totals.algaeEaten += e.algaeEaten;
   }
   totals.fishPeak = Math.max(totals.fishPeak, fish);
   totals.sharksPeak = Math.max(totals.sharksPeak, sharks);
@@ -315,7 +353,11 @@ function drawAll(): void {
 }
 
 function drawCharts(): void {
-  const line = LINE_CHARTS[chartTab];
+  const hasAlgae = sim.algaeCells() !== null;
+  const algaeTab = document.querySelector<HTMLButtonElement>('[data-chart="algae"]')!;
+  algaeTab.hidden = !hasAlgae;
+  if (!hasAlgae && chartTab === "algae") selectChart("population");
+  const line = chartTab === "eaten" && hasAlgae ? EATEN_WITH_ALGAE : LINE_CHARTS[chartTab];
   $("#line-box").hidden = !line;
   $("#ages-box").hidden = chartTab !== "ages";
   $("#cycle-box").hidden = chartTab !== "cycle";
@@ -348,8 +390,15 @@ function drawCharts(): void {
   $("#chart-title").textContent = title;
   $("#chart-note").textContent = note;
   $("#legend-items").innerHTML = legend
-    .map((s) => `<span><i class="key ${s.color === "--fish" ? "key-fish" : "key-shark"}"></i>${s.label}</span>`)
+    .map((s) => `<span><i class="key ${s.color === "--shark" ? "key-shark" : ""}" style="background:var(${s.color})"></i>${s.label}</span>`)
     .join("");
+}
+
+function selectChart(tab: ChartTab): void {
+  chartTab = tab;
+  for (const t of document.querySelectorAll<HTMLButtonElement>("[data-chart]")) {
+    t.setAttribute("aria-selected", String(t.dataset.chart === tab));
+  }
 }
 
 function drawTotals(): void {
@@ -366,6 +415,13 @@ function drawTotals(): void {
   set("sharks-starved", totals.sharksStarved);
   set("sharks-alive", sharks);
   set("sharks-peak", totals.sharksPeak);
+  const algae = sim.algaeCells();
+  $("#t-algae-row").hidden = algae === null;
+  if (algae !== null) {
+    set("algae-eaten", totals.algaeEaten);
+    set("algae-alive", algae);
+    set("algae-peak", totals.algaePeak);
+  }
 }
 
 function setRunButtonLabel(): void {
@@ -443,10 +499,7 @@ function init(): void {
   $("#csv").addEventListener("click", downloadCsv);
   for (const tab of document.querySelectorAll<HTMLButtonElement>("[data-chart]")) {
     tab.addEventListener("click", () => {
-      chartTab = tab.dataset.chart as ChartTab;
-      for (const t of document.querySelectorAll<HTMLButtonElement>("[data-chart]")) {
-        t.setAttribute("aria-selected", String(t === tab));
-      }
+      selectChart(tab.dataset.chart as ChartTab);
       drawCharts();
     });
   }

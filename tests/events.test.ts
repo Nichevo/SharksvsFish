@@ -116,3 +116,23 @@ describe("sexes", () => {
     expect(sim.counts().fish).toBeGreaterThan(400);
   });
 });
+
+describe("algae stats", () => {
+  it("are absent when algae is off and in classic mode", () => {
+    expect(enhanced().algaeCells()).toBeNull();
+    expect(new ClassicSimulation({ ...CLASSIC_DEFAULTS, seed: 1 }).algaeCells()).toBeNull();
+  });
+
+  it("count algae grazed and the cells left", () => {
+    const sim = enhanced((s) => (s.algae.enabled = true));
+    const start = sim.algaeCells()!;
+    expect(start).toBeGreaterThan(0);
+    let grazed = 0;
+    for (let i = 0; i < 5; i++) {
+      sim.step();
+      grazed += sim.lastEvents().algaeEaten;
+    }
+    expect(grazed).toBeGreaterThan(0);
+    expect(sim.algaeCells()!).toBeLessThanOrEqual(sim.width * sim.height);
+  });
+});
