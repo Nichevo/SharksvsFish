@@ -108,6 +108,44 @@
           </div>
         </div>
 
+        <div class="chart-card batch">
+          <h2>Batch experiments</h2>
+          <p class="chart-note">
+            Runs many seeds in the background over a grid of two settings, with everything else taken from the
+            settings panel, and shows how often every species is still alive at the end. Click a square to load
+            its settings into the ocean above.
+          </p>
+          <div class="batch-form">
+            <fieldset>
+              <legend>Across</legend>
+              <select id="bx-path" aria-label="Setting across the grid"></select>
+              <label>From <input id="bx-from" type="number" step="any" /></label>
+              <label>To <input id="bx-to" type="number" step="any" /></label>
+              <label>Steps <input id="bx-steps" type="number" min="1" max="20" value="5" /></label>
+            </fieldset>
+            <fieldset>
+              <legend>Up</legend>
+              <select id="by-path" aria-label="Setting up the grid"></select>
+              <label>From <input id="by-from" type="number" step="any" /></label>
+              <label>To <input id="by-to" type="number" step="any" /></label>
+              <label>Steps <input id="by-steps" type="number" min="1" max="20" value="5" /></label>
+            </fieldset>
+            <fieldset>
+              <legend>Runs</legend>
+              <label>Seeds per square <input id="b-seeds" type="number" min="1" max="500" value="10" /></label>
+              <label>Iterations per run <input id="b-ticks" type="number" min="10" max="100000" value="500" /></label>
+              <span class="batch-actions">
+                <button id="b-run" class="primary">Run batch</button>
+                <span id="b-progress" class="b-progress"></span>
+              </span>
+            </fieldset>
+          </div>
+          <div class="chart-box">
+            <canvas id="batch" aria-label="Survival grid: share of runs where every species survived, for each pair of settings"></canvas>
+            <div id="b-tooltip" class="tooltip" hidden></div>
+          </div>
+        </div>
+
         <div class="chart-card">
           <h2>Totals so far</h2>
           <div class="table-scroll">

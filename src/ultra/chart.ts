@@ -375,3 +375,86 @@ export function drawPhase(
   ctx.fill();
   ctx.stroke();
 }
+
+export interface HeatCell {
+  runs: number;
+  survived: number;
+}
+
+/**
+ * Survival grid: one square per pair of settings, darker where more runs survived.
+ * Returns the cell under `hover` (canvas pixels), if any.
+ */
+export function drawHeatmap(
+  canvas: HTMLCanvasElement,
+  xs: string[],
+  ys: string[],
+  cells: HeatCell[],
+  labels: { x: string; y: string },
+  hover: { x: number; y: number } | null,
+): number | null {
+  const { ctx, w, h } = fitCanvas(canvas);
+  const pad = { left: 64, right: 12, top: 8, bottom: 40 };
+  const plotW = w - pad.left - pad.right;
+  const plotH = h - pad.top - pad.bottom;
+  const cw = plotW / xs.length;
+  const ch = plotH / ys.length;
+  const lo = hexRgb(css(canvas, "--heat-lo"));
+  const hi = hexRgb(css(canvas, "--heat-hi"));
+  let hovered: number | null = null;
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (let yi = 0; yi < ys.length; yi++) {
+    for (let xi = 0; xi < xs.length; xi++) {
+      const i = yi * xs.length + xi;
+      const c = cells[i];
+      // First row of settings at the bottom, like a chart.
+      const x = pad.left + xi * cw;
+      const y = pad.top + plotH - (yi + 1) * ch;
+      if (hover && hover.x >= x && hover.x < x + cw && hover.y >= y && hover.y < y + ch) hovered = i;
+      if (!c || !c.runs) {
+        ctx.strokeStyle = css(canvas, "--grid");
+        ctx.strokeRect(x + 1.5, y + 1.5, cw - 3, ch - 3);
+        continue;
+      }
+      const t = c.survived / c.runs;
+      ctx.fillStyle = `rgb(${lo.map((l, k) => Math.round(l + (hi[k] - l) * t)).join(",")})`;
+      ctx.beginPath();
+      ctx.roundRect(x + 1, y + 1, cw - 2, ch - 2, 3);
+      ctx.fill();
+      if (hovered === i) {
+        ctx.strokeStyle = css(canvas, "--text-primary");
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.lineWidth = 1;
+      }
+      if (cw > 34 && ch > 18) {
+        ctx.fillStyle = t > 0.55 ? css(canvas, "--heat-ink-dark") : css(canvas, "--text-primary");
+        ctx.fillText(`${Math.round(t * 100)}%`, x + cw / 2, y + ch / 2);
+      }
+    }
+  }
+  ctx.font = "11px system-ui, sans-serif";
+  ctx.fillStyle = css(canvas, "--text-muted");
+  const everyX = Math.ceil(xs.length / Math.max(1, Math.floor(plotW / 48)));
+  xs.forEach((v, i) => i % everyX === 0 && ctx.fillText(v, pad.left + (i + 0.5) * cw, pad.top + plotH + 10));
+  ctx.textAlign = "right";
+  const everyY = Math.ceil(ys.length / Math.max(1, Math.floor(plotH / 18)));
+  ys.forEach((v, i) => i % everyY === 0 && ctx.fillText(v, pad.left - 6, pad.top + plotH - (i + 0.5) * ch));
+  ctx.fillStyle = css(canvas, "--text-secondary");
+  ctx.textAlign = "center";
+  ctx.font = "12px system-ui, sans-serif";
+  ctx.fillText(labels.x, pad.left + plotW / 2, h - 10);
+  ctx.save();
+  ctx.translate(12, pad.top + plotH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText(labels.y, 0, 0);
+  ctx.restore();
+  return hovered;
+}
+
+function hexRgb(hex: string): number[] {
+  const h = hex.replace("#", "");
+  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+}

@@ -17,6 +17,7 @@ import {
 import { getPath, setPath, type Field, type FieldGroup } from "../ui/fields";
 import { TimeChart, drawHistogram, drawPhase, formatNum, type Line } from "./chart";
 import { equilibrium, fitLotkaVolterra, solveLotkaVolterra } from "./lv";
+import { initBatch } from "./batch-ui";
 import { ULTRA_FIELDS, ULTRA_PRESETS, type UltraPreset } from "./fields";
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
@@ -612,6 +613,16 @@ function init(): void {
 
   window.addEventListener("resize", () => drawAll());
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => drawAll());
+
+  initBatch(
+    () => state.settings,
+    (values) => {
+      for (const [path, v] of Object.entries(values)) setPath(state.settings as unknown as Record<string, unknown>, path, v);
+      renderForm($("#ultra-form"), ULTRA_FIELDS, state.settings as unknown as Record<string, unknown>);
+      newPond();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+  );
 
   renderForm($("#ultra-form"), ULTRA_FIELDS, state.settings as unknown as Record<string, unknown>);
   newPond();
