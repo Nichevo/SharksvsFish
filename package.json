@@ -1,0 +1,19 @@
+{
+  "name": "sharks-vs-fish",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Predator-prey simulation of sharks and fish, rebuilt from an old Excel/VBA model.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A predator-prey simulation of sharks and fish, rebuilt from an old Excel/VBA model." />
+    <title>Sharks vs Fish</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232a78d6'/><path d='M8 3l5 5-5 5-5-5z' fill='%23e34948'/></svg>" />
+  </head>
+  <body>
+    <header class="top">
+      <div>
+        <h1>Sharks vs Fish</h1>
+        <p class="sub">Watch a small ocean find its balance, or not.</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Simulation mode">
+        <button role="tab" data-mode="classic" aria-selected="true">Classic</button>
+        <button role="tab" data-mode="enhanced" aria-selected="false">Enhanced</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="stage" aria-label="Simulation">
+        <div class="controls">
+          <button id="run" class="primary" aria-pressed="false">Run</button>
+          <button id="step">Step</button>
+          <button id="new">New pond</button>
+          <label class="speed">
+            <span>Speed</span>
+            <input id="speed" type="range" min="1" max="61" value="10" />
+            <output id="speed-out">10/s</output>
+          </label>
+        </div>
+
+        <div class="stats" aria-live="polite">
+          <div class="stat"><span class="stat-label">Iteration</span><span id="stat-tick" class="stat-value">0</span></div>
+          <div class="stat"><span class="stat-label"><i class="key key-fish"></i>Fish</span><span id="stat-fish" class="stat-value">0</span></div>
+          <div class="stat"><span class="stat-label"><i class="key key-shark"></i>Sharks</span><span id="stat-sharks" class="stat-value">0</span></div>
+          <p id="status" class="status"></p>
+        </div>
+
+        <div class="pond-wrap"><canvas id="pond" aria-label="The pond: fish are blue squares, sharks are red diamonds"></canvas></div>
+
+        <div class="chart-card">
+          <div class="chart-head">
+            <h2>Population over time</h2>
+            <div class="legend">
+              <span><i class="key key-fish"></i>Fish</span>
+              <span><i class="key key-shark"></i>Sharks</span>
+              <button id="csv" class="link">Download CSV</button>
+            </div>
+          </div>
+          <div class="chart-box">
+            <canvas id="chart" aria-label="Line chart of fish and shark numbers per iteration"></canvas>
+            <div id="tooltip" class="tooltip" hidden></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel" aria-label="Settings">
+        <div id="classic-panel">
+          <p class="intro">
+            The original Excel model: a 21×21 pond with walls. Fish and sharks age, breed and die, and sharks eat
+            fish and starve without them.
+          </p>
+          <div id="classic-form"></div>
+          <button id="classic-reset" class="link">Restore the original settings</button>
+        </div>
+
+        <div id="enhanced-panel" hidden>
+          <label class="field">
+            <span class="field-label">Starting point</span>
+            <select id="preset"></select>
+            <small id="preset-desc"></small>
+          </label>
+          <div id="enhanced-form"></div>
+        </div>
+
+        <fieldset>
+          <legend>Randomness</legend>
+          <label class="field">
+            <span class="field-label">Seed</span>
+            <input id="seed" type="number" min="0" />
+            <small>The same seed and settings always give the same run.</small>
+          </label>
+          <button id="new-seed" class="link">New random seed</button>
+        </fieldset>
+
+        <p id="apply-hint" class="apply-hint" hidden>Settings changed. Press <strong>New pond</strong> to use them.</p>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
