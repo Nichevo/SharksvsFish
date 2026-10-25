@@ -135,6 +135,27 @@ export const ENHANCED_FIELDS: FieldGroup[] = [
   },
 ];
 
+/** Cube mode: the Enhanced options, with the ocean measured in three directions. */
+export const CUBE_FIELDS: FieldGroup[] = ENHANCED_FIELDS.map((group) =>
+  group.title !== "Ocean"
+    ? group
+    : {
+        ...group,
+        fields: [
+          { kind: "number", path: "width", label: "Width", min: 3, max: 40 },
+          { kind: "number", path: "height", label: "Length", min: 3, max: 40 },
+          { kind: "number", path: "depth", label: "Depth (levels)", min: 3, max: 40, help: "Level 1 is the surface, the last level is the seabed." },
+          ...group.fields
+            .filter((f) => f.path !== "width" && f.path !== "height")
+            .map((f): Field => {
+              if (f.path === "wrap") return { ...f, label: "Sides wrap round", help: "Off: the sides are walls. The surface and seabed are always walls." };
+              if (f.path === "neighbourhood") return { ...f, options: [["moore", "26 directions"], ["vonNeumann", "6 directions (no diagonals)"]] } as Field;
+              return f;
+            }),
+        ],
+      },
+);
+
 export function getPath(obj: Record<string, unknown>, path: string): unknown {
   return path.split(".").reduce<unknown>((o, k) => (o as Record<string, unknown>)?.[k], obj);
 }

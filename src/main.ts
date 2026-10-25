@@ -1,13 +1,15 @@
 import "./style.css";
 import { CLASSIC_DEFAULTS, ClassicSimulation, type ClassicSettings } from "./engine/classic";
+import { CUBE_PRESETS, CubeSimulation, type CubeSettings } from "./engine/cube";
 import { EnhancedSimulation, type EnhancedSettings } from "./engine/enhanced";
 import { ENHANCED_PRESETS } from "./engine/presets";
 import { randomSeed } from "./engine/rng";
 import { ALGAE, FISH, FISH_FEMALE, SHARK, SHARK_FEMALE, type Simulation } from "./engine/types";
 import { LineChart, drawPhase, drawPyramid, emptyHistory, type History, type SeriesDef } from "./ui/chart";
-import { CLASSIC_FIELDS, ENHANCED_FIELDS, getPath, setPath, type Field, type FieldGroup } from "./ui/fields";
+import type { CubeView } from "./ui/cube-view";
+import { CLASSIC_FIELDS, CUBE_FIELDS, ENHANCED_FIELDS, getPath, setPath, type Field, type FieldGroup } from "./ui/fields";
 
-type Mode = "classic" | "enhanced";
+type Mode = "classic" | "enhanced" | "cube";
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
@@ -15,6 +17,8 @@ const state = {
   mode: "classic" as Mode,
   classic: { ...CLASSIC_DEFAULTS } as Omit<ClassicSettings, "seed">,
   enhanced: structuredClone(ENHANCED_PRESETS.balanced.settings) as Omit<EnhancedSettings, "seed">,
+  cube: structuredClone(CUBE_PRESETS.open.settings) as Omit<CubeSettings, "seed">,
+  cubePreset: "open",
   preset: "balanced",
   seed: randomSeed(),
   running: false,
@@ -111,16 +115,17 @@ function renderForm(container: HTMLElement, groups: FieldGroup[], target: Record
   for (const group of groups) {
     const fs = document.createElement("fieldset");
     fs.innerHTML = `<legend>${group.title}</legend>`;
-    for (const field of group.fields) fs.append(renderField(field, target));
+    for (const field of group.fields) fs.append(renderField(field, target, container.id));
     container.append(fs);
   }
 }
 
-function renderField(field: Field, target: Record<string, unknown>): HTMLElement {
+function renderField(field: Field, target: Record<string, unknown>, form: string): HTMLElement {
   const wrap = document.createElement("label");
   wrap.className = `field field-${field.kind}`;
   const value = getPath(target, field.path);
-  const id = `f-${field.path.replace(/\./g, "-")}`;
+  // Enhanced and 3D share field paths, so ids include the form.
+  const id = `${form}-${field.path.replace(/\./g, "-")}`;
   let input: HTMLInputElement | HTMLSelectElement;
 
   if (field.kind === "select") {
@@ -182,6 +187,44 @@ function markDirty(): void {
 function renderForms(): void {
   renderForm($("#classic-form"), CLASSIC_FIELDS, state.classic as unknown as Record<string, unknown>);
   renderForm($("#enhanced-form"), ENHANCED_FIELDS, state.enhanced as unknown as Record<string, unknown>);
+  renderForm($("#cube-form"), CUBE_FIELDS, state.cube as unknown as Record<string, unknown>);
+}
+
+// ---------- 3D view ----------
+
+let cubeView: CubeView | null = null;
+let cubeViewLoading: Promise<void> | null = null;
+
+/** Three.js is only downloaded the first time cube mode is opened. */
+function loadCubeView(): Promise<void> {
+  cubeViewLoading ??= import("./ui/cube-view").then(
+    ({ CubeView }) => {
+      $("#cube-loading").remove();
+      cubeView = new CubeView($("#cube-wrap"));
+      readCubeViewOptions();
+      if (sim instanceof CubeSimulation) cubeView.reset(sim);
+      drawAll();
+    },
+    () => {
+      // The offline single-file build can't load the separate 3D chunk from disk.
+      cubeViewLoading = null;
+      $("#cube-loading").innerHTML =
+        'The 3D view couldn\u2019t load. The offline file doesn\u2019t include it: use the <a href="https://nichevo.github.io/SharksvsFish/">online version</a> or <code>npm run dev</code>. The charts below still run.';
+    },
+  );
+  return cubeViewLoading;
+}
+
+function readCubeViewOptions(): void {
+  const cut = $<HTMLInputElement>("#cube-cut");
+  $("#cube-cut-out").textContent = cut.value;
+  if (!cubeView) return;
+  cubeView.options = {
+    showFish: $<HTMLInputElement>("#cube-fish").checked,
+    showSharks: $<HTMLInputElement>("#cube-sharks").checked,
+    autoRotate: $<HTMLInputElement>("#cube-rotate").checked,
+    cutaway: +cut.value,
+  };
 }
 
 // ---------- simulation lifecycle ----------
@@ -190,8 +233,17 @@ function newPond(): void {
   sim =
     state.mode === "classic"
       ? new ClassicSimulation({ ...state.classic, seed: state.seed })
-      : new EnhancedSimulation({ ...structuredClone(state.enhanced), seed: state.seed });
+      : state.mode === "cube"
+        ? new CubeSimulation({ ...structuredClone(state.cube), seed: state.seed })
+        : new EnhancedSimulation({ ...structuredClone(state.enhanced), seed: state.seed });
   cells = new Uint8Array(sim.width * sim.height);
+  if (sim instanceof CubeSimulation) {
+    const cut = $<HTMLInputElement>("#cube-cut");
+    cut.max = String(sim.depth - 1);
+    if (+cut.value > sim.depth - 1) cut.value = String(sim.depth - 1);
+    readCubeViewOptions();
+    cubeView?.reset(sim);
+  }
   history = emptyHistory();
   for (const k of Object.keys(totals) as (keyof typeof totals)[]) totals[k] = 0;
   record();
@@ -278,6 +330,17 @@ function loop(now: number): void {
 // ---------- drawing ----------
 
 function drawPond(): void {
+  const terrain = sim.terrainMap?.() ?? null;
+  const zones = sim.zoneMap?.() ?? null;
+  $("#sex-key").hidden = !sim.hasSexes();
+  $("#terrain-key").hidden = !terrain && !zones;
+  $("#key-rock").hidden = !terrain?.includes(1);
+  $("#key-reef").hidden = !terrain?.includes(2);
+  $("#key-zones").hidden = !zones;
+  if (sim instanceof CubeSimulation) {
+    cubeView?.draw(sim);
+    return;
+  }
   const dpr = window.devicePixelRatio || 1;
   const box = pond.parentElement!.getBoundingClientRect();
   const cell = Math.max(2, Math.floor(Math.min(box.width / sim.width, 560 / sim.height)));
@@ -299,16 +362,9 @@ function drawPond(): void {
     [SHARK_FEMALE]: css.getPropertyValue("--shark-female"),
     [ALGAE]: css.getPropertyValue("--algae"),
   };
-  $("#sex-key").hidden = !sexes;
   pondCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   pondCtx.fillStyle = css.getPropertyValue("--water");
   pondCtx.fillRect(0, 0, w, h);
-  const terrain = sim.terrainMap?.() ?? null;
-  const zones = sim.zoneMap?.() ?? null;
-  $("#terrain-key").hidden = !terrain && !zones;
-  $("#key-rock").hidden = !terrain?.includes(1);
-  $("#key-reef").hidden = !terrain?.includes(2);
-  $("#key-zones").hidden = !zones;
   if (terrain || zones) {
     const water = [css.getPropertyValue("--water"), css.getPropertyValue("--water-middle"), css.getPropertyValue("--water-deep")];
     const ground = ["", css.getPropertyValue("--rock"), css.getPropertyValue("--reef")];
@@ -485,7 +541,11 @@ function setMode(mode: Mode): void {
   }
   $("#classic-panel").hidden = mode !== "classic";
   $("#enhanced-panel").hidden = mode !== "enhanced";
+  $("#cube-panel").hidden = mode !== "cube";
+  $(".pond-wrap").hidden = mode === "cube";
+  $("#cube-wrap").hidden = mode !== "cube";
   newPond();
+  if (mode === "cube") void loadCubeView();
 }
 
 function init(): void {
@@ -505,6 +565,30 @@ function init(): void {
     renderForms();
     newPond();
   });
+
+  const cubePresetSelect = $<HTMLSelectElement>("#cube-preset");
+  for (const [key, p] of Object.entries(CUBE_PRESETS)) cubePresetSelect.add(new Option(p.label, key));
+  const useCubePreset = () => {
+    state.cube = structuredClone(CUBE_PRESETS[state.cubePreset].settings);
+    $("#cube-preset-desc").textContent = CUBE_PRESETS[state.cubePreset].description;
+    renderForms();
+  };
+  cubePresetSelect.addEventListener("change", () => {
+    state.cubePreset = cubePresetSelect.value;
+    useCubePreset();
+    newPond();
+  });
+  $("#cube-preset-desc").textContent = CUBE_PRESETS[state.cubePreset].description;
+  $("#cube-reset").addEventListener("click", () => {
+    useCubePreset();
+    newPond();
+  });
+  for (const id of ["#cube-fish", "#cube-sharks", "#cube-rotate", "#cube-cut"]) {
+    $(id).addEventListener("input", () => {
+      readCubeViewOptions();
+      drawPond();
+    });
+  }
 
   for (const tab of document.querySelectorAll<HTMLButtonElement>("[data-mode]")) {
     tab.addEventListener("click", () => setMode(tab.dataset.mode as Mode));
@@ -549,7 +633,10 @@ function init(): void {
   showSpeed();
 
   window.addEventListener("resize", () => drawAll());
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => drawAll());
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    cubeView?.refreshColours();
+    drawAll();
+  });
 
   renderForms();
   setMode(location.hash === "#enhanced" ? "enhanced" : "classic");

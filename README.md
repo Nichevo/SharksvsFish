@@ -49,6 +49,18 @@ Presets: *Balanced ocean*, *Wa-Tor* (Dewdney's 1984 rules), *Pairs only*, *Algae
 
 Enhanced mode can also give creatures a sex (**Separate males and females**). It is off by default. When it is on, partners must be male and female, a species that breeds alone only has young through its females, and the pond and age pyramids show males in a darker shade and females in a lighter one.
 
+### 3D cube
+
+The Enhanced rules in a cube of water instead of a flat grid (16×16×16 by default). Creatures move, hunt, flee and find partners in 26 directions, or 6 with diagonals off, so they can go up and down as well as across. The sides can wrap round; the surface and seabed are always walls. Drag the cube to turn it, scroll or pinch to zoom, and use **Cut away top levels** to look inside. Charts and totals work as in the other modes.
+
+Sharks find fish much more easily with 26 neighbours, so the 3D defaults have sharks breeding less often and dying younger than in Enhanced. The 3D view uses [Three.js](https://threejs.org/), which is only downloaded when you open this mode.
+
+![3D cube mode with the top half cut away](docs/screenshots/cube.png)
+
+The **Reefs and depths** starting point uses the same sea floor and depth zone options as Enhanced, in 3D: mountains rise from the seabed, rocks and reefs grow in clumps, and the zones are bands of levels (surface, middle, deep). Below, the fish are hidden so you can see the grey rock, see-through reefs and the sharks.
+
+![3D cube with seabed mountains, rocks and reefs, fish hidden](docs/screenshots/cube-reef.png)
+
 ### Ultra Enhanced
 A separate page (`ultra.html`, the **Ultra Enhanced** tab) with its own engine (`src/engine/ultra.ts`), so Classic and Enhanced are left exactly as they are.
 

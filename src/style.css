@@ -266,6 +266,18 @@ select:focus-visible {
   justify-content: center;
   overflow: hidden;
 }
+.cube-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  overflow: hidden;
+}
+.cube-wrap canvas {
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
 #pond {
   display: block;
   border-radius: 4px;
@@ -476,6 +488,8 @@ legend {
   gap: 16px;
   padding-bottom: 8px;
 }
+.pond-wrap[hidden],
+.cube-wrap[hidden],
 .pyramids[hidden],
 #cycle-box[hidden],
 #line-box[hidden] {
