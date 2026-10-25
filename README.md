@@ -57,6 +57,10 @@ Sharks find fish much more easily with 26 neighbours, so the 3D defaults have sh
 
 ![3D cube mode with the top half cut away](docs/screenshots/cube.png)
 
+The **Reefs and depths** starting point uses the same sea floor and depth zone options as Enhanced, in 3D: mountains rise from the seabed, rocks and reefs grow in clumps, and the zones are bands of levels (surface, middle, deep). Below, the fish are hidden so you can see the grey rock, see-through reefs and the sharks.
+
+![3D cube with seabed mountains, rocks and reefs, fish hidden](docs/screenshots/cube-reef.png)
+
 ## Charts
 
 Under the pond, the tabs show:

@@ -1,6 +1,6 @@
 import "./style.css";
 import { CLASSIC_DEFAULTS, ClassicSimulation, type ClassicSettings } from "./engine/classic";
-import { CUBE_DEFAULTS, CubeSimulation, type CubeSettings } from "./engine/cube";
+import { CUBE_PRESETS, CubeSimulation, type CubeSettings } from "./engine/cube";
 import { EnhancedSimulation, type EnhancedSettings } from "./engine/enhanced";
 import { ENHANCED_PRESETS } from "./engine/presets";
 import { randomSeed } from "./engine/rng";
@@ -17,7 +17,8 @@ const state = {
   mode: "classic" as Mode,
   classic: { ...CLASSIC_DEFAULTS } as Omit<ClassicSettings, "seed">,
   enhanced: structuredClone(ENHANCED_PRESETS.balanced.settings) as Omit<EnhancedSettings, "seed">,
-  cube: structuredClone(CUBE_DEFAULTS) as Omit<CubeSettings, "seed">,
+  cube: structuredClone(CUBE_PRESETS.open.settings) as Omit<CubeSettings, "seed">,
+  cubePreset: "open",
   preset: "balanced",
   seed: randomSeed(),
   running: false,
@@ -114,16 +115,17 @@ function renderForm(container: HTMLElement, groups: FieldGroup[], target: Record
   for (const group of groups) {
     const fs = document.createElement("fieldset");
     fs.innerHTML = `<legend>${group.title}</legend>`;
-    for (const field of group.fields) fs.append(renderField(field, target));
+    for (const field of group.fields) fs.append(renderField(field, target, container.id));
     container.append(fs);
   }
 }
 
-function renderField(field: Field, target: Record<string, unknown>): HTMLElement {
+function renderField(field: Field, target: Record<string, unknown>, form: string): HTMLElement {
   const wrap = document.createElement("label");
   wrap.className = `field field-${field.kind}`;
   const value = getPath(target, field.path);
-  const id = `f-${field.path.replace(/\./g, "-")}`;
+  // Enhanced and 3D share field paths, so ids include the form.
+  const id = `${form}-${field.path.replace(/\./g, "-")}`;
   let input: HTMLInputElement | HTMLSelectElement;
 
   if (field.kind === "select") {
@@ -328,8 +330,14 @@ function loop(now: number): void {
 // ---------- drawing ----------
 
 function drawPond(): void {
+  const terrain = sim.terrainMap?.() ?? null;
+  const zones = sim.zoneMap?.() ?? null;
+  $("#sex-key").hidden = !sim.hasSexes();
+  $("#terrain-key").hidden = !terrain && !zones;
+  $("#key-rock").hidden = !terrain?.includes(1);
+  $("#key-reef").hidden = !terrain?.includes(2);
+  $("#key-zones").hidden = !zones;
   if (sim instanceof CubeSimulation) {
-    $("#sex-key").hidden = !sim.hasSexes();
     cubeView?.draw(sim);
     return;
   }
@@ -354,16 +362,9 @@ function drawPond(): void {
     [SHARK_FEMALE]: css.getPropertyValue("--shark-female"),
     [ALGAE]: css.getPropertyValue("--algae"),
   };
-  $("#sex-key").hidden = !sexes;
   pondCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   pondCtx.fillStyle = css.getPropertyValue("--water");
   pondCtx.fillRect(0, 0, w, h);
-  const terrain = sim.terrainMap?.() ?? null;
-  const zones = sim.zoneMap?.() ?? null;
-  $("#terrain-key").hidden = !terrain && !zones;
-  $("#key-rock").hidden = !terrain?.includes(1);
-  $("#key-reef").hidden = !terrain?.includes(2);
-  $("#key-zones").hidden = !zones;
   if (terrain || zones) {
     const water = [css.getPropertyValue("--water"), css.getPropertyValue("--water-middle"), css.getPropertyValue("--water-deep")];
     const ground = ["", css.getPropertyValue("--rock"), css.getPropertyValue("--reef")];
@@ -565,9 +566,21 @@ function init(): void {
     newPond();
   });
 
-  $("#cube-reset").addEventListener("click", () => {
-    state.cube = structuredClone(CUBE_DEFAULTS);
+  const cubePresetSelect = $<HTMLSelectElement>("#cube-preset");
+  for (const [key, p] of Object.entries(CUBE_PRESETS)) cubePresetSelect.add(new Option(p.label, key));
+  const useCubePreset = () => {
+    state.cube = structuredClone(CUBE_PRESETS[state.cubePreset].settings);
+    $("#cube-preset-desc").textContent = CUBE_PRESETS[state.cubePreset].description;
     renderForms();
+  };
+  cubePresetSelect.addEventListener("change", () => {
+    state.cubePreset = cubePresetSelect.value;
+    useCubePreset();
+    newPond();
+  });
+  $("#cube-preset-desc").textContent = CUBE_PRESETS[state.cubePreset].description;
+  $("#cube-reset").addEventListener("click", () => {
+    useCubePreset();
     newPond();
   });
   for (const id of ["#cube-fish", "#cube-sharks", "#cube-rotate", "#cube-cut"]) {

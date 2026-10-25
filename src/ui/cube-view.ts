@@ -8,6 +8,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { CubeSimulation } from "../engine/cube";
+import { REEF, ROCK } from "../engine/enhanced";
 import { ALGAE, FISH, FISH_FEMALE, SHARK, SHARK_FEMALE } from "../engine/types";
 
 export interface CubeViewOptions {
@@ -26,6 +27,10 @@ export class CubeView {
   private fish: THREE.InstancedMesh;
   private sharks: THREE.InstancedMesh;
   private algae: THREE.InstancedMesh;
+  private rock: THREE.InstancedMesh;
+  private reef: THREE.InstancedMesh;
+  /** Faint tinted slabs of water, one per depth zone. */
+  private zoneSlabs = new THREE.Group();
   private frame: THREE.LineSegments;
   private size = { w: 0, h: 0, d: 0 };
   private cells = new Uint8Array(0);
@@ -56,6 +61,10 @@ export class CubeView {
     this.fish = this.makeMesh(new THREE.SphereGeometry(0.28, 10, 8));
     this.sharks = this.makeMesh(new THREE.OctahedronGeometry(0.55));
     this.algae = this.makeMesh(new THREE.BoxGeometry(0.9, 0.12, 0.9));
+    this.rock = this.makeMesh(new THREE.BoxGeometry(1, 1, 1));
+    // Reefs are see-through so the fish hiding in them still show.
+    this.reef = this.makeMesh(new THREE.BoxGeometry(0.96, 0.96, 0.96), new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.4, depthWrite: false }));
+    this.scene.add(this.zoneSlabs);
     this.frame = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 }));
     this.scene.add(this.frame);
 
@@ -96,7 +105,7 @@ export class CubeView {
     this.size = { w, h, d };
     const cells = w * h * d;
     this.cells = new Uint8Array(cells);
-    for (const name of ["fish", "sharks", "algae"] as const) {
+    for (const name of ["fish", "sharks", "algae", "rock", "reef"] as const) {
       const old = this[name];
       if (old.instanceMatrix.count < cells) {
         this.scene.remove(old);
@@ -104,6 +113,7 @@ export class CubeView {
         this[name] = this.makeMesh(old.geometry, old.material as THREE.Material, cells);
       }
     }
+    this.buildZoneSlabs(sim);
     this.frame.geometry.dispose();
     this.frame.geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(w, d, h));
     const r = Math.max(w, h, d);
@@ -120,8 +130,39 @@ export class CubeView {
       this.palette[name] = colour(name);
     }
     (this.algae.material as THREE.MeshLambertMaterial).color = colour("--algae");
+    (this.rock.material as THREE.MeshLambertMaterial).color = colour("--rock");
+    (this.reef.material as THREE.MeshLambertMaterial).color = colour("--reef");
+    const water = [colour("--water"), colour("--water-middle"), colour("--water-deep")];
+    this.zoneSlabs.children.forEach((slab, i) => {
+      ((slab as THREE.Mesh).material as THREE.MeshBasicMaterial).color = water[Math.min(i, water.length - 1)];
+    });
     (this.frame.material as THREE.LineBasicMaterial).color = colour("--text-muted");
     this.needsRender = true;
+  }
+
+  /** One faint box per depth zone, so the bands show without hiding anything. */
+  private buildZoneSlabs(sim: CubeSimulation): void {
+    for (const slab of [...this.zoneSlabs.children] as THREE.Mesh[]) {
+      slab.geometry.dispose();
+      (slab.material as THREE.Material).dispose();
+      this.zoneSlabs.remove(slab);
+    }
+    const zones = sim.zoneMap?.();
+    if (!zones) return;
+    const { w, h, d } = this.size;
+    const layer = w * h;
+    let start = 0;
+    for (let z = 1; z <= d; z++) {
+      if (z < d && zones[z * layer] === zones[start * layer]) continue;
+      const slab = new THREE.Mesh(
+        new THREE.BoxGeometry(w, z - start, h),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.25, depthWrite: false, side: THREE.BackSide }),
+      );
+      slab.position.y = d / 2 - (start + z) / 2;
+      slab.userData.top = start;
+      this.zoneSlabs.add(slab);
+      start = z;
+    }
   }
 
   /** Colours changed (light or dark theme). */
@@ -133,7 +174,10 @@ export class CubeView {
     sim.paint(this.cells);
     const { w, h, d } = this.size;
     const o = this.options;
-    const counts = { fish: 0, sharks: 0, algae: 0 };
+    const counts = { fish: 0, sharks: 0, algae: 0, rock: 0, reef: 0 };
+    const terrain = sim.terrainMap?.() ?? null;
+    // The cut-away hides whole zone slabs above the cut.
+    for (const slab of this.zoneSlabs.children) slab.visible = slab.userData.top >= o.cutaway;
     const m = this.matrix;
     // Each creature is coloured on its own: with sexes on, males are the darker shade
     // and females the lighter one, as in the flat pond.
@@ -143,13 +187,16 @@ export class CubeView {
     const sharkMale = sexes ? p["--shark-male"] : p["--shark"];
     for (let i = 0; i < this.cells.length; i++) {
       const v = this.cells[i];
-      if (!v) continue;
+      const t = terrain ? terrain[i] : 0;
+      if (!v && !t) continue;
       const x = i % w;
       const rest = Math.floor(i / w);
       const y = rest % h;
       const z = Math.floor(rest / h);
       if (z < o.cutaway) continue;
       m.makeTranslation(x - (w - 1) / 2, (d - 1) / 2 - z, y - (h - 1) / 2);
+      if (t === ROCK) this.rock.setMatrixAt(counts.rock++, m);
+      else if (t === REEF) this.reef.setMatrixAt(counts.reef++, m);
       if (v === FISH || v === FISH_FEMALE) {
         if (!o.showFish) continue;
         this.fish.setMatrixAt(counts.fish, m);
@@ -160,7 +207,7 @@ export class CubeView {
         this.sharks.setColorAt(counts.sharks++, v === SHARK ? sharkMale : p["--shark-female"]);
       } else if (v === ALGAE) this.algae.setMatrixAt(counts.algae++, m);
     }
-    for (const name of ["fish", "sharks", "algae"] as const) {
+    for (const name of ["fish", "sharks", "algae", "rock", "reef"] as const) {
       const mesh = this[name];
       mesh.count = counts[name];
       mesh.instanceMatrix.needsUpdate = true;
