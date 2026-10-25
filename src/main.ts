@@ -3,7 +3,7 @@ import { CLASSIC_DEFAULTS, ClassicSimulation, type ClassicSettings } from "./eng
 import { EnhancedSimulation, type EnhancedSettings } from "./engine/enhanced";
 import { ENHANCED_PRESETS } from "./engine/presets";
 import { randomSeed } from "./engine/rng";
-import { ALGAE, FISH, SHARK, type Simulation } from "./engine/types";
+import { ALGAE, FISH, FISH_FEMALE, SHARK, SHARK_FEMALE, type Simulation } from "./engine/types";
 import { LineChart, drawPhase, drawPyramid, emptyHistory, type History, type SeriesDef } from "./ui/chart";
 import { CLASSIC_FIELDS, ENHANCED_FIELDS, getPath, setPath, type Field, type FieldGroup } from "./ui/fields";
 
@@ -250,11 +250,16 @@ function drawPond(): void {
     pond.style.height = `${h}px`;
   }
   const css = getComputedStyle(pond);
+  // With sexes on, males are the darker shade and females the lighter one.
+  const sexes = sim.hasSexes();
   const colors: Record<number, string> = {
-    [FISH]: css.getPropertyValue("--fish"),
-    [SHARK]: css.getPropertyValue("--shark"),
+    [FISH]: css.getPropertyValue(sexes ? "--fish-male" : "--fish"),
+    [SHARK]: css.getPropertyValue(sexes ? "--shark-male" : "--shark"),
+    [FISH_FEMALE]: css.getPropertyValue("--fish-female"),
+    [SHARK_FEMALE]: css.getPropertyValue("--shark-female"),
     [ALGAE]: css.getPropertyValue("--algae"),
   };
+  $("#sex-key").hidden = !sexes;
   pondCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   pondCtx.fillStyle = css.getPropertyValue("--water");
   pondCtx.fillRect(0, 0, w, h);
@@ -266,7 +271,7 @@ function drawPond(): void {
     pondCtx.fillStyle = colors[v];
     const x = (i % sim.width) * cell;
     const y = Math.floor(i / sim.width) * cell;
-    if (v === SHARK && cell >= 8) {
+    if ((v === SHARK || v === SHARK_FEMALE) && cell >= 8) {
       // Sharks get a diamond so they don't rely on colour alone.
       pondCtx.beginPath();
       pondCtx.moveTo(x + cell / 2, y + gap);

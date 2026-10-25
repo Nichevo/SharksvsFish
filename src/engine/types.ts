@@ -3,6 +3,9 @@ export const FISH = 1;
 export const SHARK = 2;
 /** Empty cell with algae on it (enhanced mode only). */
 export const ALGAE = 3;
+/** Painted cell values when creatures have a sex (FISH / SHARK are then the males). */
+export const FISH_FEMALE = 4;
+export const SHARK_FEMALE = 5;
 
 export type Family = typeof FISH | typeof SHARK;
 
@@ -20,7 +23,7 @@ export interface Simulation {
   /** Advance one iteration. */
   step(): void;
   counts(): Counts;
-  /** Write one value per cell (EMPTY / FISH / SHARK / ALGAE) into `out`. */
+  /** Write one value per cell (EMPTY / FISH / SHARK / ALGAE, or the *_FEMALE values) into `out`. */
   paint(out: Uint8Array): void;
   /** True when the run has ended (a species died out or a tick limit was reached). */
   finished(): boolean;

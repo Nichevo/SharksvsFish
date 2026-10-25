@@ -11,6 +11,10 @@
   --accent-ink: #ffffff;
   --fish: #2a78d6;
   --shark: #e34948;
+  --fish-male: #1c5aa6;
+  --fish-female: #74a9ea;
+  --shark-male: #b02c2c;
+  --shark-female: #f08b8a;
   --algae: #cfe8d4;
   --water: #eef3f8;
   --warn-bg: #fff4d6;
@@ -30,6 +34,10 @@
     --accent: #3987e5;
     --fish: #3987e5;
     --shark: #e66767;
+    --fish-male: #2c6dc2;
+    --fish-female: #93c1f5;
+    --shark-male: #c24545;
+    --shark-female: #f4a5a4;
     --algae: #1f3a27;
     --water: #141d26;
     --warn-bg: #3a3017;
@@ -47,6 +55,10 @@
   --accent: #3987e5;
   --fish: #3987e5;
   --shark: #e66767;
+  --fish-male: #2c6dc2;
+  --fish-female: #93c1f5;
+  --shark-male: #c24545;
+  --shark-female: #f4a5a4;
   --algae: #1f3a27;
   --water: #141d26;
   --warn-bg: #3a3017;
@@ -511,4 +523,33 @@ legend {
 }
 .legend span {
   white-space: nowrap;
+}
+
+.sex-key {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.sex-key[hidden] {
+  display: none;
+}
+.sex-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.key-fish-male {
+  background: var(--fish-male);
+}
+.key-fish-female {
+  background: var(--fish-female);
+}
+.key-shark-male {
+  background: var(--shark-male);
+}
+.key-shark-female {
+  background: var(--shark-female);
 }

@@ -5,6 +5,8 @@
 import { Rng } from "./rng";
 import {
   ALGAE,
+  FISH_FEMALE,
+  SHARK_FEMALE,
   EMPTY,
   FEMALE,
   FISH,
@@ -476,7 +478,8 @@ export class EnhancedSimulation implements Simulation {
     const showAlgae = this.settings.algae.enabled;
     for (let i = 0; i < this.grid.length; i++) {
       const c = this.grid[i];
-      out[i] = c ? c.family : showAlgae && this.algae[i] === 0 ? ALGAE : EMPTY;
+      if (c) out[i] = c.sex === FEMALE ? (c.family === FISH ? FISH_FEMALE : SHARK_FEMALE) : c.family;
+      else out[i] = showAlgae && this.algae[i] === 0 ? ALGAE : EMPTY;
     }
   }
 

@@ -259,7 +259,10 @@ export function drawPyramid(
     if (sexes) {
       const lw = (male[b] / maxV) * half;
       const rw = (female[b] / maxV) * half;
+      const sp = family === FISH ? "--fish" : "--shark";
+      ctx.fillStyle = css(canvas, `${sp}-male`);
       roundRect(ctx, mid - 1 - lw, y, lw, barH);
+      ctx.fillStyle = css(canvas, `${sp}-female`);
       roundRect(ctx, mid + 1, y, rw, barH);
     } else {
       roundRect(ctx, pad.left, y, (all[b] / maxV) * plotW, barH);
