@@ -8,7 +8,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { CubeSimulation } from "../engine/cube";
-import { ALGAE, FISH, SHARK } from "../engine/types";
+import { ALGAE, FISH, FISH_FEMALE, SHARK, SHARK_FEMALE } from "../engine/types";
 
 export interface CubeViewOptions {
   showFish: boolean;
@@ -31,6 +31,8 @@ export class CubeView {
   private cells = new Uint8Array(0);
   private needsRender = true;
   private matrix = new THREE.Matrix4();
+  /** Colour per painted cell value, read from the page's CSS. */
+  private palette: Record<string, THREE.Color> = {};
   options: CubeViewOptions = { showFish: true, showSharks: true, cutaway: 0, autoRotate: true };
 
   constructor(private container: HTMLElement) {
@@ -114,8 +116,9 @@ export class CubeView {
   private applyColours(): void {
     const css = getComputedStyle(this.container);
     const colour = (name: string) => new THREE.Color(css.getPropertyValue(name).trim() || "#888");
-    (this.fish.material as THREE.MeshLambertMaterial).color = colour("--fish");
-    (this.sharks.material as THREE.MeshLambertMaterial).color = colour("--shark");
+    for (const name of ["--fish", "--fish-male", "--fish-female", "--shark", "--shark-male", "--shark-female"]) {
+      this.palette[name] = colour(name);
+    }
     (this.algae.material as THREE.MeshLambertMaterial).color = colour("--algae");
     (this.frame.material as THREE.LineBasicMaterial).color = colour("--text-muted");
     this.needsRender = true;
@@ -132,6 +135,12 @@ export class CubeView {
     const o = this.options;
     const counts = { fish: 0, sharks: 0, algae: 0 };
     const m = this.matrix;
+    // Each creature is coloured on its own: with sexes on, males are the darker shade
+    // and females the lighter one, as in the flat pond.
+    const p = this.palette;
+    const sexes = sim.hasSexes();
+    const fishMale = sexes ? p["--fish-male"] : p["--fish"];
+    const sharkMale = sexes ? p["--shark-male"] : p["--shark"];
     for (let i = 0; i < this.cells.length; i++) {
       const v = this.cells[i];
       if (!v) continue;
@@ -141,13 +150,21 @@ export class CubeView {
       const z = Math.floor(rest / h);
       if (z < o.cutaway) continue;
       m.makeTranslation(x - (w - 1) / 2, (d - 1) / 2 - z, y - (h - 1) / 2);
-      if (v === FISH && o.showFish) this.fish.setMatrixAt(counts.fish++, m);
-      else if (v === SHARK && o.showSharks) this.sharks.setMatrixAt(counts.sharks++, m);
-      else if (v === ALGAE) this.algae.setMatrixAt(counts.algae++, m);
+      if (v === FISH || v === FISH_FEMALE) {
+        if (!o.showFish) continue;
+        this.fish.setMatrixAt(counts.fish, m);
+        this.fish.setColorAt(counts.fish++, v === FISH ? fishMale : p["--fish-female"]);
+      } else if (v === SHARK || v === SHARK_FEMALE) {
+        if (!o.showSharks) continue;
+        this.sharks.setMatrixAt(counts.sharks, m);
+        this.sharks.setColorAt(counts.sharks++, v === SHARK ? sharkMale : p["--shark-female"]);
+      } else if (v === ALGAE) this.algae.setMatrixAt(counts.algae++, m);
     }
     for (const name of ["fish", "sharks", "algae"] as const) {
-      this[name].count = counts[name];
-      this[name].instanceMatrix.needsUpdate = true;
+      const mesh = this[name];
+      mesh.count = counts[name];
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
     this.needsRender = true;
   }

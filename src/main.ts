@@ -195,13 +195,21 @@ let cubeViewLoading: Promise<void> | null = null;
 
 /** Three.js is only downloaded the first time cube mode is opened. */
 function loadCubeView(): Promise<void> {
-  cubeViewLoading ??= import("./ui/cube-view").then(({ CubeView }) => {
-    $("#cube-loading").remove();
-    cubeView = new CubeView($("#cube-wrap"));
-    readCubeViewOptions();
-    if (sim instanceof CubeSimulation) cubeView.reset(sim);
-    drawAll();
-  });
+  cubeViewLoading ??= import("./ui/cube-view").then(
+    ({ CubeView }) => {
+      $("#cube-loading").remove();
+      cubeView = new CubeView($("#cube-wrap"));
+      readCubeViewOptions();
+      if (sim instanceof CubeSimulation) cubeView.reset(sim);
+      drawAll();
+    },
+    () => {
+      // The offline single-file build can't load the separate 3D chunk from disk.
+      cubeViewLoading = null;
+      $("#cube-loading").innerHTML =
+        'The 3D view couldn\u2019t load. The offline file doesn\u2019t include it: use the <a href="https://nichevo.github.io/SharksvsFish/">online version</a> or <code>npm run dev</code>. The charts below still run.';
+    },
+  );
   return cubeViewLoading;
 }
 
@@ -321,6 +329,7 @@ function loop(now: number): void {
 
 function drawPond(): void {
   if (sim instanceof CubeSimulation) {
+    $("#sex-key").hidden = !sim.hasSexes();
     cubeView?.draw(sim);
     return;
   }
