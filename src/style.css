@@ -389,3 +389,126 @@ legend {
 .apply-hint[hidden] {
   display: none;
 }
+
+.chart-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: -2px 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+.chart-tabs button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--text-secondary);
+  padding: 6px 10px;
+}
+.chart-tabs button[aria-selected="true"] {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+.chart-note {
+  margin: 2px 0 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.chart-note:empty {
+  display: none;
+}
+.smooth {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.smooth[hidden] {
+  display: none;
+}
+.smooth input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+#legend-items {
+  display: inline-flex;
+  gap: 14px;
+}
+.tooltip em {
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 11px;
+}
+.pyramids {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  padding-bottom: 8px;
+}
+.pyramids[hidden],
+#cycle-box[hidden],
+#line-box[hidden] {
+  display: none;
+}
+.pyramids figure {
+  margin: 0;
+}
+.pyramids figcaption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.pyramids canvas {
+  display: block;
+  width: 100%;
+  height: 240px;
+}
+#phase {
+  display: block;
+  width: 100%;
+  height: 300px;
+}
+.totals {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+.totals th,
+.totals td {
+  padding: 6px 8px;
+  text-align: right;
+  border-bottom: 1px solid var(--grid);
+}
+.totals thead th {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 12px;
+}
+.totals tbody th {
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.totals tbody th .key {
+  margin-right: 6px;
+}
+.totals tbody tr:last-child th,
+.totals tbody tr:last-child td {
+  border-bottom: 0;
+}
+@media (max-width: 520px) {
+  .totals th,
+  .totals td {
+    padding: 6px 4px;
+    font-size: 12px;
+  }
+}
+.legend {
+  flex-wrap: wrap;
+}
+.legend span {
+  white-space: nowrap;
+}

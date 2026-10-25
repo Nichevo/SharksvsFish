@@ -73,6 +73,8 @@ export const ENHANCED_FIELDS: FieldGroup[] = [
       { kind: "select", path: "offspring", label: "Babies are born", options: [["adjacent", "next to the parent"], ["anywhere", "anywhere (original)"]] },
       { kind: "bool", path: "shuffleOrder", label: "Random turn order", help: "Off: oldest creatures always move first." },
       { kind: "number", path: "maxTicks", label: "Stop after (0 = never)", min: 0, max: 1000000 },
+      { kind: "bool", path: "sexes", label: "Separate males and females", help: "Partners must be male and female. Creatures that breed alone: only females have young." },
+      { kind: "percent", path: "femaleShare", label: "Babies born female" },
     ],
   },
   {

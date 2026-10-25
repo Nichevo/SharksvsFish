@@ -39,7 +39,26 @@ Presets: *Balanced ocean*, *Wa-Tor* (Dewdney's 1984 rules), *Pairs only* and *Al
 
 <img src="docs/screenshots/mobile-dark.png" alt="The Algae food chain preset on a phone in dark mode" width="300">
 
-Every run uses a **seed**, so the same seed and settings always give the same run. **Download CSV** saves the population history.
+Enhanced mode can also give creatures a sex (**Separate males and females**). Partners must then be male and female, and a species that breeds alone only has young through its females. The *Pairs only* preset has this switched on.
+
+## Charts
+
+Under the pond, the tabs show:
+
+- **Population:** fish and sharks over time.
+- **Births**, **Eaten** and **Deaths:** what happened in each iteration, with optional 10-iteration smoothing.
+- **Age & sex:** an age pyramid for each species, with males on the left and females on the right. Classic mode (and Enhanced with sexes off) shows ages only.
+- **Cycle:** fish plotted against sharks. A stable ocean draws loops, and a crash runs into an axis.
+
+A **Totals so far** table shows births, deaths by cause (eaten, old age, starved), the number alive now and the peak for each species. **Download CSV** includes every series.
+
+![Fish eaten per iteration, with the hover tooltip](docs/screenshots/eaten.png)
+
+![Age and sex pyramids for fish and sharks](docs/screenshots/age-sex.png)
+
+![Cycle chart: fish against sharks over a long run](docs/screenshots/cycle.png)
+
+Every run uses a **seed**, so the same seed and settings always give the same run.
 
 ## Development
 

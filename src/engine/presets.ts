@@ -41,8 +41,9 @@ export const ENHANCED_PRESETS: Record<string, { label: string; description: stri
   },
   pairs: {
     label: "Pairs only",
-    description: "Like the original idea: creatures need a partner next to them to breed.",
+    description: "Like the original idea: males and females need a partner next to them to breed.",
     settings: preset((p) => {
+      p.sexes = true;
       p.fish = { ...p.fish, needsMate: true, breedChance: 0.8, breedCooldown: 1, litterSize: 2, start: 900 };
       p.sharks = { ...p.sharks, needsMate: true, breedChance: 0.8, breedCooldown: 12, litterSize: 1, sight: 2, start: 80 };
     }),

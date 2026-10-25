@@ -42,18 +42,53 @@
         <div class="pond-wrap"><canvas id="pond" aria-label="The pond: fish are blue squares, sharks are red diamonds"></canvas></div>
 
         <div class="chart-card">
+          <div class="chart-tabs" role="tablist" aria-label="Charts">
+            <button role="tab" data-chart="population" aria-selected="true">Population</button>
+            <button role="tab" data-chart="births" aria-selected="false">Births</button>
+            <button role="tab" data-chart="eaten" aria-selected="false">Eaten</button>
+            <button role="tab" data-chart="deaths" aria-selected="false">Deaths</button>
+            <button role="tab" data-chart="ages" aria-selected="false">Age &amp; sex</button>
+            <button role="tab" data-chart="cycle" aria-selected="false">Cycle</button>
+          </div>
           <div class="chart-head">
-            <h2>Population over time</h2>
+            <h2 id="chart-title">Population over time</h2>
             <div class="legend">
-              <span><i class="key key-fish"></i>Fish</span>
-              <span><i class="key key-shark"></i>Sharks</span>
+              <span id="legend-items"></span>
+              <label id="smooth-wrap" class="smooth" hidden><input id="smooth" type="checkbox" checked /> Smooth</label>
               <button id="csv" class="link">Download CSV</button>
             </div>
           </div>
-          <div class="chart-box">
-            <canvas id="chart" aria-label="Line chart of fish and shark numbers per iteration"></canvas>
+          <p id="chart-note" class="chart-note"></p>
+          <div id="line-box" class="chart-box">
+            <canvas id="chart" aria-label="Line chart over time"></canvas>
             <div id="tooltip" class="tooltip" hidden></div>
           </div>
+          <div id="ages-box" class="pyramids" hidden>
+            <figure>
+              <figcaption><i class="key key-fish"></i>Fish</figcaption>
+              <canvas id="pyramid-fish" aria-label="Fish age pyramid"></canvas>
+            </figure>
+            <figure>
+              <figcaption><i class="key key-shark"></i>Sharks</figcaption>
+              <canvas id="pyramid-sharks" aria-label="Shark age pyramid"></canvas>
+            </figure>
+          </div>
+          <div id="cycle-box" hidden>
+            <canvas id="phase" aria-label="Fish numbers plotted against shark numbers over the run"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h2>Totals so far</h2>
+          <table class="totals">
+            <thead>
+              <tr><th></th><th>Born</th><th>Eaten</th><th>Old age</th><th>Starved</th><th>Alive now</th><th>Peak</th></tr>
+            </thead>
+            <tbody>
+              <tr><th><i class="key key-fish"></i>Fish</th><td id="t-fish-born"></td><td id="t-fish-eaten"></td><td id="t-fish-old"></td><td id="t-fish-starved"></td><td id="t-fish-alive"></td><td id="t-fish-peak"></td></tr>
+              <tr><th><i class="key key-shark"></i>Sharks</th><td id="t-sharks-born"></td><td>–</td><td id="t-sharks-old"></td><td id="t-sharks-starved"></td><td id="t-sharks-alive"></td><td id="t-sharks-peak"></td></tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
