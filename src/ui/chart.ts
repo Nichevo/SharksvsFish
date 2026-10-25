@@ -16,6 +16,9 @@ export interface History {
   /** All causes. */
   fishDied: number[];
   sharksDied: number[];
+  /** Cells with algae (0 when algae is off). */
+  algae: number[];
+  algaeEaten: number[];
 }
 
 export type SeriesKey = Exclude<keyof History, "ticks">;
@@ -34,6 +37,8 @@ export function emptyHistory(): History {
     sharksStarved: [],
     fishDied: [],
     sharksDied: [],
+    algae: [],
+    algaeEaten: [],
   };
 }
 
@@ -391,7 +396,7 @@ function nearestIndex(sorted: number[], t: number): number {
 /** A round axis maximum that splits into four round gridlines. */
 function niceTop(v: number): number {
   const p = 10 ** Math.floor(Math.log10(v / 4));
-  for (const m of [1, 2, 5, 10]) if (m * p * 4 >= v) return m * p * 4;
+  for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5, 10]) if (m * p * 4 >= v) return m * p * 4;
   return 40 * p;
 }
 

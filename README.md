@@ -51,6 +51,7 @@ Under the pond, the tabs show:
 - **Births**, **Eaten** and **Deaths:** what happened in each iteration, with optional 10-iteration smoothing.
 - **Age & sex:** an age pyramid for each species, with males on the left and females on the right. Classic mode (and Enhanced with sexes off) shows ages only.
 - **Cycle:** fish plotted against sharks. A stable ocean draws loops, and a crash runs into an axis.
+- **Algae** (only when *Fish must eat algae* is on): algae patches against fish over time. The **Eaten** chart also adds algae grazed per iteration, and the totals table gets an algae row.
 
 A **Totals so far** table shows births, deaths by cause (eaten, old age, starved), the number alive now and the peak for each species. **Download CSV** includes every series.
 
@@ -59,6 +60,8 @@ A **Totals so far** table shows births, deaths by cause (eaten, old age, starved
 ![Age and sex pyramids for fish and sharks](docs/screenshots/age-sex.png)
 
 ![Cycle chart: fish against sharks over a long run](docs/screenshots/cycle.png)
+
+![Algae chart: algae patches against fish with the food chain switched on](docs/screenshots/algae.png)
 
 Every run uses a **seed**, so the same seed and settings always give the same run.
 

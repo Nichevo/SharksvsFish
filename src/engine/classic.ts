@@ -344,6 +344,10 @@ export class ClassicSimulation implements Simulation {
     return this.tick > 0 && this.tick % this.settings.iterationsPerRun === 0;
   }
 
+  algaeCells(): number | null {
+    return null;
+  }
+
   lastEvents(): TickEvents {
     return this.events;
   }

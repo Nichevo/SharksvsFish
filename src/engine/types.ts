@@ -37,6 +37,8 @@ export interface Simulation {
   hasSexes(): boolean;
   /** Oldest age each species can reach, for scaling the age charts. */
   ageLimits(): { fish: number; sharks: number };
+  /** Cells with algae on them, or null when the model has no algae. */
+  algaeCells(): number | null;
 }
 
 export const NO_SEX = 0;
@@ -53,12 +55,14 @@ export interface TickEvents {
   fishStarved: number;
   sharksOldAge: number;
   sharksStarved: number;
+  /** Algae patches grazed by fish (enhanced mode with algae on). */
+  algaeEaten: number;
 }
 
 export type DeathCause = "eaten" | "oldAge" | "starved";
 
 export function emptyEvents(): TickEvents {
-  return { fishBorn: 0, sharksBorn: 0, fishEaten: 0, fishOldAge: 0, fishStarved: 0, sharksOldAge: 0, sharksStarved: 0 };
+  return { fishBorn: 0, sharksBorn: 0, fishEaten: 0, fishOldAge: 0, fishStarved: 0, sharksOldAge: 0, sharksStarved: 0, algaeEaten: 0 };
 }
 
 export function recordDeath(e: TickEvents, family: Family, cause: DeathCause): void {
