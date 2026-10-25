@@ -616,3 +616,21 @@ legend {
 .sex-key span[hidden] {
   display: none;
 }
+
+/* Ultra Enhanced lives on its own page, so its tab is a link. */
+.tabs .tab-link {
+  color: var(--text-secondary);
+  padding: 6px 16px;
+  border-radius: 999px;
+  text-decoration: none;
+}
+.tabs .tab-link[aria-current="page"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.tabs .tab-link:hover {
+  color: var(--text-primary);
+}
+.tabs .tab-link[aria-current="page"]:hover {
+  color: var(--accent-ink);
+}

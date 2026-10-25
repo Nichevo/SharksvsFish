@@ -552,7 +552,7 @@ function init(): void {
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => drawAll());
 
   renderForms();
-  setMode("classic");
+  setMode(location.hash === "#enhanced" ? "enhanced" : "classic");
 }
 
 init();
