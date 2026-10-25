@@ -1,21 +1,40 @@
-// Turns the Vite build in dist/ into one self-contained HTML file that opens
-// straight from disk (double-click), with no server or internet needed.
-import { readFileSync, writeFileSync } from "node:fs";
+// Turns each page into one self-contained HTML file in dist/ that opens straight
+// from disk (double-click), with no server or internet needed.
+//
+// Each page is built again on its own, so all of its code lands in one script that
+// can be inlined (the normal build shares chunks between pages).
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { build } from "vite";
 
 const dist = "dist";
-let html = readFileSync(join(dist, "index.html"), "utf8");
+const tmp = join(dist, ".single");
+// Each page, and the offline file it becomes. Links between pages point at the offline files.
+const pages = [
+  ["index.html", "sharks-vs-fish.html"],
+  ["ultra.html", "sharks-vs-fish-ultra.html"],
+];
 
-html = html.replace(/<script type="module" crossorigin src="\.\/(assets\/[^"]+\.js)"><\/script>/g, (_, file) => {
-  const js = readFileSync(join(dist, file), "utf8").replace(/<\/script/gi, "<\\/script");
-  return `<script type="module">${js}</script>`;
-});
-html = html.replace(/<link rel="stylesheet" crossorigin href="\.\/(assets\/[^"]+\.css)">/g, (_, file) => {
-  return `<style>${readFileSync(join(dist, file), "utf8")}</style>`;
-});
+for (const [page, out] of pages) {
+  const dir = join(tmp, out);
+  await build({ logLevel: "warn", build: { outDir: dir, emptyOutDir: true, rollupOptions: { input: page } } });
+  let html = readFileSync(join(dir, page), "utf8");
 
-if (/src="\.\/assets|href="\.\/assets/.test(html)) {
-  throw new Error("single-file: some assets were not inlined");
+  html = html.replace(/<script type="module" crossorigin src="\.\/(assets\/[^"]+\.js)"><\/script>/g, (_, file) => {
+    const js = readFileSync(join(dir, file), "utf8").replace(/<\/script/gi, "<\\/script");
+    return `<script type="module">${js}</script>`;
+  });
+  html = html.replace(/<link rel="stylesheet" crossorigin href="\.\/(assets\/[^"]+\.css)">/g, (_, file) => {
+    return `<style>${readFileSync(join(dir, file), "utf8")}</style>`;
+  });
+  html = html
+    .replace(/href="\.\/ultra\.html"/g, 'href="./sharks-vs-fish-ultra.html"')
+    .replace(/href="\.\/(#[^"]*)?"/g, 'href="./sharks-vs-fish.html$1"');
+
+  if (/src="\.\/assets|href="\.\/assets/.test(html)) {
+    throw new Error(`single-file: some assets were not inlined in ${page}`);
+  }
+  writeFileSync(join(dist, out), html);
+  console.log(`single-file: wrote ${join(dist, out)} (${Math.round(html.length / 1024)} KB)`);
 }
-writeFileSync(join(dist, "sharks-vs-fish.html"), html);
-console.log(`single-file: wrote ${join(dist, "sharks-vs-fish.html")} (${Math.round(html.length / 1024)} KB)`);
+rmSync(tmp, { recursive: true, force: true });

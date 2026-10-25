@@ -43,6 +43,15 @@ Presets: *Balanced ocean*, *Wa-Tor* (Dewdney's 1984 rules), *Pairs only* and *Al
 
 Enhanced mode can also give creatures a sex (**Separate males and females**). It is off by default. When it is on, partners must be male and female, a species that breeds alone only has young through its females, and the pond and age pyramids show males in a darker shade and females in a lighter one.
 
+### Ultra Enhanced
+A separate page (`ultra.html`, the **Ultra Enhanced** tab) with its own engine (`src/engine/ultra.ts`), so Classic and Enhanced are left exactly as they are.
+
+- **Evolution:** every baby inherits its parent's speed, sight and lifespan, nudged up or down by a small random mutation. Good traits cost something: speed and sight burn extra energy, and a longer life means fewer babies. The **Evolution** chart tracks each species' average over time with a histogram of the current spread, and the ocean can be coloured by any trait to see where the fast or long-lived creatures are.
+- **Seasons:** algae grows fastest in summer and slowest in winter. Winters are shaded on the charts.
+- **Events:** buttons set off a **disease** outbreak in the species you pick (it spreads to neighbours, kills some and the rest recover), a **fishing boat** that drags a net across the ocean, or a **heatwave** that withers algae, burns energy and slows breeding. They can also arrive at random.
+
+Presets: *Evolving ocean*, *Arms race*, *Hard winters*, *Eventful ocean* and *No evolution* (for comparison). The offline download for this page is `sharks-vs-fish-ultra.html`.
+
 ## Charts
 
 Under the pond, the tabs show:

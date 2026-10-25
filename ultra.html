@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Ultra Enhanced Sharks vs Fish: evolution, seasons and events in a predator-prey ocean." />
+    <title>Sharks vs Fish: Ultra Enhanced</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%232a78d6'/><path d='M8 3l5 5-5 5-5-5z' fill='%23e34948'/></svg>" />
+  </head>
+  <body>
+    <header class="top">
+      <div>
+        <h1>Sharks vs Fish</h1>
+        <p class="sub">Ultra Enhanced: evolution, seasons and events.</p>
+      </div>
+      <a class="offline-link" href="./sharks-vs-fish-ultra.html" download="sharks-vs-fish-ultra.html" title="One HTML file that runs on your own computer with no internet">Download to run offline</a>
+      <nav class="tabs" aria-label="Simulation mode">
+        <a class="tab-link" href="./">Classic</a>
+        <a class="tab-link" href="./#enhanced">Enhanced</a>
+        <a class="tab-link" href="./ultra.html" aria-current="page">Ultra Enhanced</a>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <section class="stage" aria-label="Simulation">
+        <div class="controls">
+          <button id="run" class="primary" aria-pressed="false">Run</button>
+          <button id="step">Step</button>
+          <button id="new">New pond</button>
+          <label class="speed">
+            <span>Speed</span>
+            <input id="speed" type="range" min="1" max="61" value="15" />
+            <output id="speed-out">15/s</output>
+          </label>
+        </div>
+
+        <div class="events-bar" role="group" aria-label="Trigger an event">
+          <span class="events-label">Trigger</span>
+          <span class="event-group">
+            <button id="ev-disease">Disease</button>
+            <select id="ev-disease-target" aria-label="Species the disease strikes"></select>
+          </span>
+          <button id="ev-boat">Fishing boat</button>
+          <button id="ev-heat">Heatwave</button>
+          <span id="season" class="season" hidden></span>
+        </div>
+
+        <div class="stats" aria-live="polite">
+          <div class="stat"><span class="stat-label">Iteration</span><span id="stat-tick" class="stat-value">0</span></div>
+          <div id="species-stats" class="species-stats"></div>
+          <div class="stat"><span class="stat-label">Generations (fish avg)</span><span id="stat-gen" class="stat-value">0</span></div>
+          <p id="status" class="status"></p>
+        </div>
+
+        <div class="pond-wrap">
+          <div class="pond-view">
+            <label class="view-pick">
+              <span>Colour by</span>
+              <select id="view">
+                <option value="species">Species</option>
+                <option value="speed">Speed</option>
+                <option value="sight">Sight</option>
+                <option value="lifespan">Lifespan</option>
+              </select>
+            </label>
+            <p id="pond-key" class="pond-key"></p>
+            <canvas id="pond" aria-label="The ocean: fish are squares, sharks are diamonds"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-tabs" role="tablist" aria-label="Charts">
+            <button role="tab" data-chart="population" aria-selected="true">Population</button>
+            <button role="tab" data-chart="traits" aria-selected="false">Evolution</button>
+            <button role="tab" data-chart="deaths" aria-selected="false">Deaths</button>
+            <button role="tab" data-chart="algae" aria-selected="false">Algae &amp; seasons</button>
+          </div>
+          <div class="chart-head">
+            <h2 id="chart-title">Population over time</h2>
+            <div class="legend">
+              <span id="trait-pick" class="trait-pick" hidden>
+                <button data-trait="speed" aria-pressed="true">Speed</button>
+                <button data-trait="sight" aria-pressed="false">Sight</button>
+                <button data-trait="lifespan" aria-pressed="false">Lifespan</button>
+              </span>
+              <span id="legend-items"></span>
+              <button id="csv" class="link">Download CSV</button>
+            </div>
+          </div>
+          <p id="chart-note" class="chart-note"></p>
+          <div class="chart-box">
+            <canvas id="chart" aria-label="Line chart over time"></canvas>
+            <div id="tooltip" class="tooltip" hidden></div>
+          </div>
+          <div id="hist-box" class="hists" hidden></div>
+        </div>
+
+        <div class="chart-card">
+          <h2>Totals so far</h2>
+          <div class="table-scroll">
+            <table class="totals">
+              <thead>
+                <tr><th></th><th>Born</th><th>Eaten</th><th>Old age</th><th>Starved</th><th>Disease</th><th>Caught</th><th>Alive now</th><th>Peak</th></tr>
+              </thead>
+              <tbody id="totals-body"></tbody>
+            </table>
+          </div>
+          <h2>Events</h2>
+          <ol id="event-log" class="event-log"></ol>
+        </div>
+      </section>
+
+      <aside class="panel" aria-label="Settings">
+        <p class="intro">
+          A separate mode, so Classic and Enhanced stay as they are. Babies inherit their parent's traits with small
+          mutations, algae follows the seasons, and you can set off disease, fishing boats and heatwaves.
+        </p>
+        <label class="field field-select">
+          <span class="field-label">Starting point</span>
+          <select id="preset"></select>
+          <small id="preset-desc"></small>
+        </label>
+        <div id="ultra-form"></div>
+
+        <fieldset>
+          <legend>Randomness</legend>
+          <label class="field field-seed">
+            <span class="field-label">Seed</span>
+            <input id="seed" type="number" min="0" />
+            <small>The same seed and settings always give the same run, as long as events are pressed at the same iterations.</small>
+          </label>
+          <button id="new-seed" class="link">New random seed</button>
+        </fieldset>
+
+        <p id="apply-hint" class="apply-hint" hidden>Settings changed. Press <strong>New pond</strong> to use them.</p>
+      </aside>
+    </main>
+
+    <script type="module" src="/src/ultra/main.ts"></script>
+  </body>
+</html>

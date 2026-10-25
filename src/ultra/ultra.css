@@ -1,0 +1,198 @@
+/* Extra styles for the Ultra Enhanced page. Shared styles come from ../style.css. */
+:root {
+  --band: rgb(42 120 214 / 0.07);
+  --sick: #b8a000;
+  --net: rgb(120 84 40 / 0.28);
+  --water-hot: #f8eee6;
+  --trait-low: #6a4bc4;
+  --trait-mid: #b9b7b0;
+  --trait-high: #e07b00;
+  --heat: #c2410c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --band: rgb(57 135 229 / 0.1);
+    --sick: #d9c23a;
+    --net: rgb(214 170 110 / 0.25);
+    --water-hot: #2a1c16;
+    --trait-low: #9d85ea;
+    --trait-mid: #6f6e68;
+    --trait-high: #f59a2e;
+    --heat: #f97b4a;
+  }
+}
+:root[data-theme="dark"] {
+  --band: rgb(57 135 229 / 0.1);
+  --sick: #d9c23a;
+  --net: rgb(214 170 110 / 0.25);
+  --water-hot: #2a1c16;
+  --trait-low: #9d85ea;
+  --trait-mid: #6f6e68;
+  --trait-high: #f59a2e;
+  --heat: #f97b4a;
+}
+
+.events-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.events-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.event-group {
+  display: inline-flex;
+}
+.event-group button {
+  border-radius: 8px 0 0 8px;
+}
+.event-group select {
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  padding: 0 6px;
+}
+.season {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.season[hidden] {
+  display: none;
+}
+.season[data-season="heat"] {
+  color: var(--heat);
+  border-color: var(--heat);
+}
+
+.species-stats {
+  display: contents;
+}
+
+.pond-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.view-pick {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.view-pick select {
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+.pond-key {
+  align-self: flex-start;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.pond-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pond-key .gradient {
+  display: inline-block;
+  width: 120px;
+  height: 10px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--trait-low), var(--trait-mid), var(--trait-high));
+}
+
+.trait-pick {
+  display: inline-flex;
+  gap: 4px;
+}
+.trait-pick[hidden] {
+  display: none;
+}
+.trait-pick button {
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+}
+.trait-pick button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.key-dashed {
+  height: 2px;
+  width: 14px;
+}
+
+.hists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  padding: 8px 0;
+}
+.hists[hidden] {
+  display: none;
+}
+.hists figure {
+  margin: 0;
+}
+.hists figcaption {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.hists canvas {
+  display: block;
+  width: 100%;
+  height: 160px;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+.event-log {
+  list-style: none;
+  margin: 6px 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text-secondary);
+}
+.event-log .ev-tick {
+  display: inline-block;
+  min-width: 56px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.event-log .muted {
+  color: var(--text-muted);
+}
+.field-seed {
+  grid-template-columns: 1fr 140px;
+}
+.panel > .field-select {
+  grid-template-columns: 1fr;
+}
