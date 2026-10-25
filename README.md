@@ -4,7 +4,9 @@ A predator-prey simulation in the browser. Fish and sharks live in a grid ocean:
 
 It started life as an Excel/VBA workbook (`SnF - v4.xls`). This is a rebuild that keeps the original model and adds a lot more to play with.
 
-**Play it:** https://nichevo.github.io/SharksvsFish/ (once GitHub Pages is switched on, see below)
+**Play it:** https://nichevo.github.io/SharksvsFish/
+
+<img src="docs/screenshots/run.gif" alt="Animation of a Classic run: fish and sharks moving in the pond while the population chart draws" width="560">
 
 ![Classic mode: the original 21×21 pond with the population chart](docs/screenshots/classic.png)
 
