@@ -419,6 +419,7 @@ export class EnhancedSimulation implements Simulation {
     const a = this.settings.algae;
     if (a.enabled && this.algae[c.cell] === 0) {
       this.algae[c.cell] = Math.max(1, a.regrowTime);
+      this.events.algaeEaten++;
       c.energy = Math.min(a.fishMaxEnergy, c.energy + a.energyPerAlgae);
     }
     this.tryBreed(c, from);
@@ -489,6 +490,13 @@ export class EnhancedSimulation implements Simulation {
 
   atPausePoint(): boolean {
     return false;
+  }
+
+  algaeCells(): number | null {
+    if (!this.settings.algae.enabled) return null;
+    let n = 0;
+    for (const v of this.algae) if (v === 0) n++;
+    return n;
   }
 
   lastEvents(): TickEvents {
