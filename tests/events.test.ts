@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CLASSIC_DEFAULTS, ClassicSimulation } from "../src/engine/classic";
 import { ENHANCED_DEFAULTS, EnhancedSimulation, type EnhancedSettings } from "../src/engine/enhanced";
 import { ENHANCED_PRESETS } from "../src/engine/presets";
-import { FEMALE, MALE, NO_SEX, type Simulation } from "../src/engine/types";
+import { FEMALE, FISH_FEMALE, MALE, NO_SEX, SHARK_FEMALE, type Simulation } from "../src/engine/types";
 
 /** Population change each iteration must equal births minus deaths. */
 function checkBookkeeping(sim: Simulation, ticks: number): void {
@@ -63,6 +63,19 @@ describe("events", () => {
 });
 
 describe("sexes", () => {
+  it("is off by default and in every preset", () => {
+    expect(ENHANCED_DEFAULTS.sexes).toBe(false);
+    for (const p of Object.values(ENHANCED_PRESETS)) expect(p.settings.sexes).toBe(false);
+  });
+
+  it("paints females with their own cell value", () => {
+    const sim = enhanced((s) => (s.sexes = true));
+    const cells = new Uint8Array(sim.width * sim.height);
+    sim.paint(cells);
+    const females = sim.individuals().filter((p) => p.sex === FEMALE).length;
+    expect(cells.filter((v) => v === FISH_FEMALE || v === SHARK_FEMALE).length).toBe(females);
+  });
+
   it("an all-male population can't breed alone", () => {
     const sim = enhanced((s) => {
       s.sexes = true;

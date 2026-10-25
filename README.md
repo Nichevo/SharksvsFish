@@ -41,7 +41,7 @@ Presets: *Balanced ocean*, *Wa-Tor* (Dewdney's 1984 rules), *Pairs only* and *Al
 
 <img src="docs/screenshots/mobile-dark.png" alt="The Algae food chain preset on a phone in dark mode" width="300">
 
-Enhanced mode can also give creatures a sex (**Separate males and females**). Partners must then be male and female, and a species that breeds alone only has young through its females. The *Pairs only* preset has this switched on.
+Enhanced mode can also give creatures a sex (**Separate males and females**). It is off by default. When it is on, partners must be male and female, a species that breeds alone only has young through its females, and the pond and age pyramids show males in a darker shade and females in a lighter one.
 
 ## Charts
 
