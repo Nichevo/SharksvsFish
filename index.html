@@ -17,6 +17,7 @@
       <div class="tabs" role="tablist" aria-label="Simulation mode">
         <button role="tab" data-mode="classic" aria-selected="true">Classic</button>
         <button role="tab" data-mode="enhanced" aria-selected="false">Enhanced</button>
+        <button role="tab" data-mode="cube" aria-selected="false">3D cube</button>
       </div>
     </header>
 
@@ -50,6 +51,7 @@
         </div>
 
         <div class="pond-wrap"><canvas id="pond" aria-label="The pond: fish are blue squares, sharks are red diamonds"></canvas></div>
+        <div id="cube-wrap" class="cube-wrap" hidden><p id="cube-loading" class="chart-note">Loading the 3D view…</p></div>
 
         <div class="chart-card">
           <div class="chart-tabs" role="tablist" aria-label="Charts">
@@ -127,6 +129,26 @@
             <small id="preset-desc"></small>
           </label>
           <div id="enhanced-form"></div>
+        </div>
+
+        <div id="cube-panel" hidden>
+          <p class="intro">
+            The Enhanced rules in a cube of water: creatures move and hunt in 26 directions, up and down as well
+            as across. Drag the cube to turn it and scroll or pinch to zoom.
+          </p>
+          <fieldset>
+            <legend>View</legend>
+            <label class="field field-bool"><input id="cube-fish" type="checkbox" checked /><span class="field-label">Show fish</span></label>
+            <label class="field field-bool"><input id="cube-sharks" type="checkbox" checked /><span class="field-label">Show sharks</span></label>
+            <label class="field field-bool"><input id="cube-rotate" type="checkbox" checked /><span class="field-label">Turn slowly</span></label>
+            <label class="field">
+              <span class="field-label">Cut away top levels: <output id="cube-cut-out">0</output></span>
+              <input id="cube-cut" type="range" min="0" max="15" value="0" />
+              <small>Hides levels from the surface down so you can see inside.</small>
+            </label>
+          </fieldset>
+          <div id="cube-form"></div>
+          <button id="cube-reset" class="link">Restore the 3D defaults</button>
         </div>
 
         <fieldset>
