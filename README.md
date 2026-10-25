@@ -61,6 +61,19 @@ The **Reefs and depths** starting point uses the same sea floor and depth zone o
 
 ![3D cube with seabed mountains, rocks and reefs, fish hidden](docs/screenshots/cube-reef.png)
 
+### Ultra Enhanced
+A separate page (`ultra.html`, the **Ultra Enhanced** tab) with its own engine (`src/engine/ultra.ts`), so Classic and Enhanced are left exactly as they are.
+
+- **Evolution:** every baby inherits its parent's speed, sight and lifespan, nudged up or down by a small random mutation. Good traits cost something: speed and sight burn extra energy, and a longer life means fewer babies. The **Evolution** chart tracks each species' average over time with a histogram of the current spread, and the ocean can be coloured by any trait to see where the fast or long-lived creatures are.
+- **Seasons:** algae grows fastest in summer and slowest in winter. Winters are shaded on the charts.
+- **Events:** buttons set off a **disease** outbreak in the species you pick (it spreads to neighbours, kills some and the rest recover), a **fishing boat** that drags a net across the ocean, or a **heatwave** that withers algae, burns energy and slows breeding. They can also arrive at random.
+
+- **More species:** optional **barracuda**, a mid-level predator that eats fish and is eaten by sharks and orcas, and **orcas**, the apex predator that hunts sharks first and barracuda second. Each species has its own shape in the ocean (fish squares, barracuda triangles, sharks diamonds, orcas circles), and the event log notes when a species dies out.
+- **Compare with the maths:** the *Compare with the maths* chart fits the classic Lotka-Volterra predator-prey equations to your run and draws their curves (dashed) over the real ones, with the fitted rates, the balance point and the cycle length, plus a fish-against-sharks plot with the model's orbit. It can compare fish and sharks, fish and barracuda, or sharks and orcas.
+- **Batch experiments:** pick two settings to sweep (for example starting sharks against fish breeding chance), how many seeds per square and how long each run lasts. The runs go in the background on several web workers, and a grid fills in with the share of runs where every species was still alive at the end. Hover a square for details and click it to load those settings into the ocean.
+
+Presets: *Evolving ocean*, *Arms race*, *Hard winters*, *Eventful ocean*, *Food web* (all four species), *Orcas* and *No evolution* (for comparison). The offline download for this page is `sharks-vs-fish-ultra.html`.
+
 ## Charts
 
 Under the pond, the tabs show:

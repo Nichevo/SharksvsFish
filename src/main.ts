@@ -639,7 +639,7 @@ function init(): void {
   });
 
   renderForms();
-  setMode("classic");
+  setMode(location.hash === "#enhanced" ? "enhanced" : "classic");
 }
 
 init();
